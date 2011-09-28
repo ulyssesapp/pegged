@@ -614,7 +614,7 @@ const NSString *__sourceTemplate = @"\
 #else\n\
     const char *cstring = [[_string lowercaseString] UTF8String];\n\
 #endif\n\
-    int saved = _index;\n\
+    NSInteger saved = _index;\n\
     while (*s)\n\
     {\n\
         if (_index >= _limit && ![self _refill]) return NO;\n\
@@ -657,9 +657,9 @@ const NSString *__sourceTemplate = @"\
     [capture release];\n\
 }\n\
 \n\
-- (NSString *) yyText:(int)begin to:(int)end\n\
+- (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end\n\
 {\n\
-    int len = end - begin;\n\
+    NSInteger len = end - begin;\n\
     if (len <= 0)\n\
         return @\"\";\n\
     return [_string substringWithRange:NSMakeRange(begin, len)];\n\
