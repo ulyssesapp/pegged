@@ -23,17 +23,21 @@
     NSString *_propertyType;
     
     BOOL _caseInsensitive;
+    BOOL _matchDebug;
     
     NSString *_className;
     NSString *_headerPath;
     NSString *_sourcePath;
+    NSString *_extraCode;
 }
 
 @property (assign) BOOL caseInsensitive;
+@property (assign) BOOL matchDebug;
 
 @property (copy) NSString *className;
 @property (copy) NSString *headerPath;
 @property (copy) NSString *sourcePath;
+@property (copy) NSString *extraCode;
 
 + (NSString *) unique:(NSString *)identifier;
 
@@ -64,5 +68,6 @@
 - (void) parsedPropertyStars:(NSString *)stars;
 - (void) parsedPropertyType:(NSString *)type;
 - (void) parsedPropertyName:(NSString *)name;
+- (void) parsedExtraCode:(NSString*)code;
 
 @end

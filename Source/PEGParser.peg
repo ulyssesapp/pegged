@@ -15,10 +15,12 @@
 Grammar <- Spacing Declaration* Spacing Definition+ EndOfFile
 
 Declaration <- OPTION "case-insensitive" HorizSpace* EndOfDecl { self.compiler.caseInsensitive = YES; }
+             / OPTION "match-debug" HorizSpace* EndOfDecl { self.compiler.matchDebug = YES; }
              / PROPERTY (PropParamaters { [self.compiler parsedPropertyParameters:text]; })?
                         PropIdentifier           { [self.compiler parsedPropertyType:text]; }
                         < '*'* > HorizSpace*     { [self.compiler parsedPropertyStars:text]; }
                         PropIdentifier EndOfDecl { [self.compiler parsedPropertyName:text]; }
+             / ExtraCode
 
 Definition <- Identifier { [self.compiler startRule:text]; }
                 LEFTARROW Expression { [self.compiler parsedRule]; }
@@ -86,6 +88,9 @@ END        <- '>' Spacing
 Code       <- '{{' < [^}]* > '}}' Spacing
 Action     <- '{' < [^}]* > '}' Spacing
 HorizSpace <- ' ' / '\t'
+
+# this isn't quite right yet, but it does what I need for the moment
+ExtraCode  <- '%%' < [^%]* > '%%' { [self.compiler parsedExtraCode: text]; }
 
 PropIdentifier <- < IdentStart IdentCont* > HorizSpace*
 PropParamaters <- < '(' [^)]+ ')' > HorizSpace+

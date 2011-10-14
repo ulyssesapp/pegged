@@ -35,6 +35,8 @@ const NSString *__sourceTemplate;
 @synthesize className  = _className;
 @synthesize headerPath = _headerPath;
 @synthesize sourcePath = _sourcePath;
+@synthesize extraCode = _extraCode;
+@synthesize matchDebug = _matchDebug;
 
 //==================================================================================================
 #pragma mark -
@@ -50,6 +52,7 @@ const NSString *__sourceTemplate;
         _stack      = [NSMutableArray new];
         _rules      = [NSMutableDictionary new];
         _properties = [NSMutableArray new];
+        _extraCode  = nil;
     }
     
     return self;
@@ -111,8 +114,24 @@ const NSString *__sourceTemplate;
     // Generate the source
     NSMutableString *declarations = [NSMutableString new];
     NSMutableString *definitions  = [NSMutableString new];
-    if (self.caseInsensitive)
+    if (self.caseInsensitive) {
         [imports appendFormat:@"#define %@_CASE_INSENSITIVE\n", [self.className uppercaseString]];
+    }
+    if(self.matchDebug) {
+        [imports appendString: @"#define matchDEBUG\n"];        
+    }
+    
+    if(self.extraCode) {
+        [definitions appendFormat: @"\n\
+//==================================================================================================\n\
+#pragma mark -\n\
+#pragma mark Extra Code\n\
+//==================================================================================================\n\
+\n\
+%@\n\
+\n", self.extraCode];
+    }
+    
     for (NSString *name in [[_rules allKeys] sortedArrayUsingSelector:@selector(compare:)])
     {
         Rule *rule = [_rules objectForKey:name];
@@ -130,6 +149,7 @@ const NSString *__sourceTemplate;
         [definitions appendString:[rule compile:self.className]];
         [definitions appendFormat:@"};\n\n"];
     }
+        
     NSString *source = [NSString stringWithFormat:(NSString *)__sourceTemplate, PEGGED_VERSION_MAJOR, PEGGED_VERSION_MINOR, PEGGED_VERSION_CHANGE, self.className, imports, self.className, self.className, self.className, self.className, self.className, synthesizes, self.className, self.className, self.className, self.className, self.className, [self.className uppercaseString], self.className, self.className, self.className, self.className, definitions, _startRule.name, declarations, self.className];
     [declarations release];
     [definitions release];
@@ -385,8 +405,12 @@ const NSString *__sourceTemplate;
     [_propertyType release];
 }
 
+- (void) parsedExtraCode:(NSString*)code {
+    self.extraCode = code;
+}
 
 @end
+
 
 const NSString *__headerTemplate = @"\
 //\n\
@@ -778,7 +802,6 @@ const NSString *__sourceTemplate = @"\
     _string = nil;\n\
     return retval;\n\
 }\n\
-\n\
 \n\
 @end\n\
 \n\

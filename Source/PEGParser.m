@@ -155,7 +155,7 @@
 #else
     const char *cstring = [[_string lowercaseString] UTF8String];
 #endif
-    int saved = _index;
+    NSInteger saved = _index;
     while (*s)
     {
         if (_index >= _limit && ![self _refill]) return NO;
@@ -198,9 +198,9 @@
     [capture release];
 }
 
-- (NSString *) yyText:(int)begin to:(int)end
+- (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end
 {
-    int len = end - begin;
+    NSInteger len = end - begin;
     if (len <= 0)
         return @"";
     return [_string substringWithRange:NSMakeRange(begin, len)];
@@ -347,6 +347,14 @@ static PEGParserRule __Declaration = ^(PEGParser *parser){
     if (![parser matchRule:@"EndOfDecl"]) return NO;
     [parser performAction:^(PEGParser *self, NSString *text){ self.compiler.caseInsensitive = YES;     }];    return YES;    }]) return YES;
     if ([parser matchOne:^(PEGParser *parser){
+    if (![parser matchRule:@"OPTION"]) return NO;
+    if (![parser matchString:"match-debug"]) return NO;
+    [parser matchMany:^(PEGParser *parser){
+    if (![parser matchRule:@"HorizSpace"]) return NO;
+    return YES;    }];
+    if (![parser matchRule:@"EndOfDecl"]) return NO;
+    [parser performAction:^(PEGParser *self, NSString *text){ self.compiler.matchDebug = YES;     }];    return YES;    }]) return YES;
+    if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"PROPERTY"]) return NO;
     [parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"PropParamaters"]) return NO;
@@ -363,6 +371,9 @@ static PEGParserRule __Declaration = ^(PEGParser *parser){
     [parser performAction:^(PEGParser *self, NSString *text){ [self.compiler parsedPropertyStars:text];     }];    if (![parser matchRule:@"PropIdentifier"]) return NO;
     if (![parser matchRule:@"EndOfDecl"]) return NO;
     [parser performAction:^(PEGParser *self, NSString *text){ [self.compiler parsedPropertyName:text];     }];    return YES;    }]) return YES;
+    if ([parser matchOne:^(PEGParser *parser){
+    if (![parser matchRule:@"ExtraCode"]) return NO;
+    return YES;    }]) return YES;
     return NO;    }]) return NO;
     return YES;
 };
@@ -443,6 +454,17 @@ static PEGParserRule __Expression = ^(PEGParser *parser){
     if (![parser matchRule:@"Sequence"]) return NO;
     [parser performAction:^(PEGParser *self, NSString *text){ [self.compiler parsedAlternate];     }];    return YES;    }];
     return YES;
+};
+
+static PEGParserRule __ExtraCode = ^(PEGParser *parser){
+    if (![parser matchString:"%%"]) return NO;
+    [parser beginCapture];
+    [parser matchMany:^(PEGParser *parser){
+    if (![parser matchClass:(unsigned char *)"\377\377\377\377\337\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"]) return NO;
+    return YES;    }];
+    [parser endCapture];
+    if (![parser matchString:"%%"]) return NO;
+    [parser performAction:^(PEGParser *self, NSString *text){ [self.compiler parsedExtraCode: text];     }];    return YES;
 };
 
 static PEGParserRule __Grammar = ^(PEGParser *parser){
@@ -795,6 +817,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
         [self addRule:__EndOfFile withName:@"EndOfFile"];
         [self addRule:__EndOfLine withName:@"EndOfLine"];
         [self addRule:__Expression withName:@"Expression"];
+        [self addRule:__ExtraCode withName:@"ExtraCode"];
         [self addRule:__Grammar withName:@"Grammar"];
         [self addRule:__HorizSpace withName:@"HorizSpace"];
         [self addRule:__IdentCont withName:@"IdentCont"];
@@ -871,7 +894,6 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     _string = nil;
     return retval;
 }
-
 
 @end
 
