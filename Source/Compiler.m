@@ -531,8 +531,10 @@ const NSString *__sourceTemplate = @"\
 #include <string.h>\n\
 \n\
 #ifdef matchDEBUG\n\
+#define yydebug(args) { fprintf args; }\n\
 #define yyprintf(args)	{ fprintf args; fprintf(stderr,\" @ %%s\\n\",[[_string substringFromIndex:_index] UTF8String]); }\n\
 #else\n\
+#define yydebug(args)\n\
 #define yyprintf(args)\n\
 #endif\n\
 \n\
@@ -646,14 +648,14 @@ const NSString *__sourceTemplate = @"\
         {\n\
             [pool drain];\n\
             _index = saved;\n\
-            yyprintf((stderr, \"  fail matchString\"));\n\
+            yyprintf((stderr, \"  fail matchString '%%s'\", s));\n\
             return NO;\n\
         }\n\
         ++s;\n\
         ++_index;\n\
     }\n\
     [pool drain];\n\
-    yyprintf((stderr, \"  ok   matchString\"));\n\
+    yyprintf((stderr, \"  ok   matchString '%%s'\", s));\n\
     return YES;\n\
 }\n\
 \n\

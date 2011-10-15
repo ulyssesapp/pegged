@@ -48,9 +48,11 @@
 #include <string.h>
 
 #ifdef matchDEBUG
+#define yydebug(args) { fprintf args; }
 #define yyprintf(args)	{ fprintf args; fprintf(stderr," @ %s\n",[[_string substringFromIndex:_index] UTF8String]); }
 #else
 #define yyprintf(args)
+#define yydebug(args)
 #endif
 
 - (BOOL) _refill
@@ -163,14 +165,14 @@
         {
             [pool drain];
             _index = saved;
-            yyprintf((stderr, "  fail matchString"));
+            yyprintf((stderr, "  fail matchString '%s'", s));
             return NO;
         }
         ++s;
         ++_index;
     }
     [pool drain];
-    yyprintf((stderr, "  ok   matchString"));
+    yyprintf((stderr, "  ok   matchString '%s'", s));
     return YES;
 }
 

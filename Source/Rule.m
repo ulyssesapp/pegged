@@ -59,6 +59,7 @@
 {
     NSMutableString *code = [NSMutableString string];
     
+    [code appendFormat: @"yydebug((stderr, \"Rule: '%@'\"))", [self.name UTF8String]];
     [code appendString:[self.definition compile:parserClassName]];
     [code appendFormat:@"    return YES;\n"];
     
