@@ -538,6 +538,18 @@ const NSString *__sourceTemplate = @"\
 #define yyprintf(args)\n\
 #endif\n\
 \n\
+// define some LLVM3 macros if the code is compiled with a different compiler (ie LLVMGCC42)\n\
+#ifndef __has_feature\n\
+#define __has_feature(x) 0\n\
+#endif\n\
+#ifndef __has_extension\n\
+#define __has_extension __has_feature // Compatibility with pre-3.0 compilers.\n\
+#endif\n\
+\n\
+#if __has_feature(objc_arc) && __clang_major__ >= 3\n\
+#define ARC_ENABLED 1\n\
+#endif // __has_feature(objc_arc)\n\
+\n\
 - (BOOL) _refill\n\
 {\n\
     if (!self.dataSource)\n\
@@ -634,7 +646,11 @@ const NSString *__sourceTemplate = @"\
 \n\
 - (BOOL) matchString:(char *)s\n\
 {\n\
+#ifdef ARC_ENABLED\n\
+    @autoreleasepool {\n\
+#else\n\
     NSAutoreleasePool *pool = [NSAutoreleasePool new];\n\
+#endif\n\
 #ifndef %@_CASE_INSENSITIVE\n\
     const char *cstring = [_string UTF8String];\n\
 #else\n\
@@ -646,7 +662,9 @@ const NSString *__sourceTemplate = @"\
         if (_index >= _limit && ![self _refill]) return NO;\n\
         if (cstring[_index] != *s)\n\
         {\n\
+#ifndef ARC_ENABLED\n\
             [pool drain];\n\
+#endif\n\
             _index = saved;\n\
             yyprintf((stderr, \"  fail matchString '%%s'\", s));\n\
             return NO;\n\
@@ -654,7 +672,11 @@ const NSString *__sourceTemplate = @"\
         ++s;\n\
         ++_index;\n\
     }\n\
+#ifdef ARC_ENABLED\n\
+  }\n\
+#else\n\
     [pool drain];\n\
+#endif\n\
     yyprintf((stderr, \"  ok   matchString '%%s'\", s));\n\
     return YES;\n\
 }\n\
