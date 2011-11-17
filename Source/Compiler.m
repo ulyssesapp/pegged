@@ -487,6 +487,18 @@ const NSString *__sourceTemplate = @"\
 \n\
 #import \"%@.h\"\n\
 \n\
+// define some LLVM3 macros if the code is compiled with a different compiler (ie LLVMGCC42)\n\
+#ifndef __has_feature\n\
+#define __has_feature(x) 0\n\
+#endif\n\
+#ifndef __has_extension\n\
+#define __has_extension __has_feature // Compatibility with pre-3.0 compilers.\n\
+#endif\n\
+\n\
+#if __has_feature(objc_arc) && __clang_major__ >= 3\n\
+#define ARC_ENABLED 1\n\
+#endif // __has_feature(objc_arc)\n\
+\n\
 %@\
 \n\
 @interface %@Capture : NSObject\n\
@@ -504,11 +516,14 @@ const NSString *__sourceTemplate = @"\
 @synthesize begin = _begin;\n\
 @synthesize end = _end;\n\
 @synthesize action = _action;\n\
+#ifndef ARC_ENABLED\n\
 - (void) dealloc\n\
 {\n\
     [_action release];\n\
     [super dealloc];\n\
 }\n\
+#endif\n\
+\n\
 @end\n\
 \n\
 \n\
@@ -538,18 +553,6 @@ const NSString *__sourceTemplate = @"\
 #define yyprintf(args)\n\
 #endif\n\
 \n\
-// define some LLVM3 macros if the code is compiled with a different compiler (ie LLVMGCC42)\n\
-#ifndef __has_feature\n\
-#define __has_feature(x) 0\n\
-#endif\n\
-#ifndef __has_extension\n\
-#define __has_extension __has_feature // Compatibility with pre-3.0 compilers.\n\
-#endif\n\
-\n\
-#if __has_feature(objc_arc) && __clang_major__ >= 3\n\
-#define ARC_ENABLED 1\n\
-#endif // __has_feature(objc_arc)\n\
-\n\
 - (BOOL) _refill\n\
 {\n\
     if (!self.dataSource)\n\
@@ -559,8 +562,12 @@ const NSString *__sourceTemplate = @"\
     if (nextString)\n\
     {\n\
         nextString = [_string stringByAppendingString:nextString];\n\
+#ifdef ARC_ENABLED\n\
+        _string = nextString;\n\
+#else\n\
         [_string release];\n\
         _string = [nextString retain];\n\
+#endif\n\
     }\n\
     _limit = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];\n\
     yyprintf((stderr, \"refill\"));\n\
@@ -702,7 +709,9 @@ const NSString *__sourceTemplate = @"\
     capture.end    = yyend;\n\
     capture.action = action;\n\
     [_captures addObject:capture];\n\
+#ifndef ARC_ENABLED\n\
     [capture release];\n\
+#endif\n\
 }\n\
 \n\
 - (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end\n\
@@ -724,8 +733,12 @@ const NSString *__sourceTemplate = @"\
 - (void) yyCommit\n\
 {\n\
     NSString *newString = [_string substringFromIndex:_index];\n\
+#ifdef ARC_ENABLED\n\
+    _string = newString;\n\
+#else\n\
     [_string release];\n\
     _string = [newString retain];\n\
+#endif\n\
     _limit -= _index;\n\
     _index = 0;\n\
 \n\
@@ -753,7 +766,9 @@ const NSString *__sourceTemplate = @"\
         [self yyDone];\n\
     [self yyCommit];\n\
     \n\
+#ifndef ARC_ENABLED\n\
     [_string release];\n\
+#endif\n\
     _string = nil;\n\
     \n\
     return matched;\n\
@@ -780,6 +795,7 @@ const NSString *__sourceTemplate = @"\
 }\n\
 \n\
 \n\
+#ifndef ARC_ENABLED\n\
 - (void) dealloc\n\
 {\n\
     [_string release];\n\
@@ -788,6 +804,7 @@ const NSString *__sourceTemplate = @"\
 \n\
     [super dealloc];\n\
 }\n\
+#endif\n\
 \n\
 \n\
 //==================================================================================================\n\
@@ -802,7 +819,9 @@ const NSString *__sourceTemplate = @"\
     {\n\
         rules = [NSMutableArray new];\n\
         [_rules setObject:rules forKey:name];\n\
+#ifndef ARC_ENABLED\n\
         [rules release];\n\
+#endif\n\
     }\n\
     \n\
     [rules addObject:rule];\n\
@@ -822,7 +841,9 @@ const NSString *__sourceTemplate = @"\
     _limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];\n\
     _index  = 0;\n\
     BOOL retval = [self _parse];\n\
+#ifndef ARC_ENABLED\n\
     [_string release];\n\
+#endif\n\
     _string = nil;\n\
     return retval;\n\
 }\n\
