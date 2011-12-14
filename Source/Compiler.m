@@ -449,6 +449,7 @@ typedef void (^%@Action)(%@ *self, NSString *text);\n\
 \n\
 @property (readonly) NSUInteger captureStart;\n\
 @property (readonly) NSUInteger captureEnd;\n\
+@property (readonly) NSString* string;\n\
 %@\
 \n\
 - (void) addRule:(%@Rule)rule withName:(NSString *)name;\n\
@@ -533,6 +534,7 @@ const NSString *__sourceTemplate = @"\
 \n\
 @synthesize captureStart = yybegin;\n\
 @synthesize captureEnd = yyend;\n\
+@synthesize string = _string;\n\
 %@\
 \n\
 //==================================================================================================\n\
