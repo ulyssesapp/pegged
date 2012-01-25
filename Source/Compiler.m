@@ -8,7 +8,6 @@
 
 #import "Compiler.h"
 
-
 #import "Action.h"
 #import "CClass.h"
 #import "Code.h"
@@ -115,7 +114,7 @@ const NSString *__sourceTemplate;
     NSMutableString *declarations = [NSMutableString new];
     NSMutableString *definitions  = [NSMutableString new];
     if (self.caseInsensitive) {
-        [imports appendFormat:@"#define %@_CASE_INSENSITIVE\n", [self.className uppercaseString]];
+        [imports appendFormat:@"#define __PEG_PARSER_CASE_INSENSITIVE__\n", [self.className uppercaseString]];
     }
     if(self.matchDebug) {
         [imports appendString: @"#define matchDEBUG\n"];        
@@ -433,6 +432,7 @@ typedef void (^%@Action)(%@ *self, NSString *text);\n\
 {\n\
     %@DataSource *_dataSource;\n\
     NSString *_string;\n\
+    const char *cstring;\n\
     NSUInteger _index;\n\
     NSUInteger _limit;\n\
     NSMutableDictionary *_rules;\n\
@@ -570,6 +570,12 @@ const NSString *__sourceTemplate = @"\
         [_string release];\n\
         _string = [nextString retain];\n\
 #endif\n\
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__\n\
+        cstring = [_string UTF8String];\n\
+#else\n\
+        cstring = [[_string lowercaseString] UTF8String];\n\
+#endif\n\
+\n\
     }\n\
     _limit = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];\n\
     yyprintf((stderr, \"refill\"));\n\
@@ -660,11 +666,7 @@ const NSString *__sourceTemplate = @"\
 #else\n\
     NSAutoreleasePool *pool = [NSAutoreleasePool new];\n\
 #endif\n\
-#ifndef %@_CASE_INSENSITIVE\n\
-    const char *cstring = [_string UTF8String];\n\
-#else\n\
-    const char *cstring = [[_string lowercaseString] UTF8String];\n\
-#endif\n\
+// %@\n\
     NSInteger saved = _index;\n\
     while (*s)\n\
     {\n\
@@ -741,6 +743,12 @@ const NSString *__sourceTemplate = @"\
     [_string release];\n\
     _string = [newString retain];\n\
 #endif\n\
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__\n\
+    cstring = [_string UTF8String];\n\
+#else\n\
+    cstring = [[_string lowercaseString] UTF8String];\n\
+#endif\n\
+\n\
     _limit -= _index;\n\
     _index = 0;\n\
 \n\
@@ -756,6 +764,7 @@ const NSString *__sourceTemplate = @"\
     if (!_string)\n\
     {\n\
         _string = [NSString new];\n\
+        cstring = [_string UTF8String];\n\
         _limit = 0;\n\
         _index = 0;\n\
     }\n\
@@ -772,6 +781,7 @@ const NSString *__sourceTemplate = @"\
     [_string release];\n\
 #endif\n\
     _string = nil;\n\
+    cstring = nil;\n\
     \n\
     return matched;\n\
 }\n\
@@ -840,6 +850,12 @@ const NSString *__sourceTemplate = @"\
 - (BOOL) parseString:(NSString *)string\n\
 {\n\
     _string = [string copy];\n\
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__\n\
+    cstring = [_string UTF8String];\n\
+#else\n\
+    cstring = [[_string lowercaseString] UTF8String];\n\
+#endif\n\
+\n\
     _limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];\n\
     _index  = 0;\n\
     BOOL retval = [self _parse];\n\
@@ -847,6 +863,7 @@ const NSString *__sourceTemplate = @"\
     [_string release];\n\
 #endif\n\
     _string = nil;\n\
+    cstring = nil;\n\
     return retval;\n\
 }\n\
 \n\
