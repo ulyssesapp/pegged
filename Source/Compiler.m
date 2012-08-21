@@ -80,7 +80,7 @@ const NSString *__sourceTemplate;
 + (NSString *) unique:(NSString *)identifier
 {
     static NSUInteger number = 0;
-    return [NSString stringWithFormat:@"%@%u", identifier, number++];
+    return [NSString stringWithFormat:@"%@%lu", identifier, number++];
 }
 
 
@@ -114,7 +114,7 @@ const NSString *__sourceTemplate;
     NSMutableString *declarations = [NSMutableString new];
     NSMutableString *definitions  = [NSMutableString new];
     if (self.caseInsensitive) {
-        [imports appendFormat:@"#define __PEG_PARSER_CASE_INSENSITIVE__\n", [self.className uppercaseString]];
+        [imports appendString:@"#define __PEG_PARSER_CASE_INSENSITIVE__\n"];
     }
     if(self.matchDebug) {
         [imports appendString: @"#define matchDEBUG\n"];        
