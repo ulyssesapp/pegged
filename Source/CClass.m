@@ -7,17 +7,16 @@
 //
 
 #import "CClass.h"
+#import <stdlib.h>
 
-#include <stdlib.h>
-
-static void setbit(unsigned char bitset[], int c, BOOL caseInsensitive, BOOL negative)
+static void setabit(unsigned char bitset[], int c, BOOL caseInsensitive, BOOL negative)
 {
     if (caseInsensitive)
     {
         if (islower(c))
-            setbit(bitset, toupper(c), NO, negative);
+            setabit(bitset, toupper(c), NO, negative);
         else if (isupper(c))
-            setbit(bitset, tolower(c), NO, negative);
+            setabit(bitset, tolower(c), NO, negative);
     }
     
     if (negative)
@@ -71,11 +70,11 @@ static void setbits(unsigned char bitset[], const char *cstring, BOOL caseInsens
         if ('-' == c && *cstring && prev >= 0)
         {
             for (c = nextchar(&cstring); prev <= c; ++prev)
-                setbit(bitset, prev, caseInsensitive, negative);
+                setabit(bitset, prev, caseInsensitive, negative);
             prev = -1;
         }
         else
-            setbit(bitset, prev=c, caseInsensitive, negative);
+            setabit(bitset, prev=c, caseInsensitive, negative);
     }
 }
 
