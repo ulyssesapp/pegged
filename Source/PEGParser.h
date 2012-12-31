@@ -18,6 +18,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 {
     PEGParserDataSource *_dataSource;
     NSString *_string;
+    const char *cstring;
     NSUInteger _index;
     NSUInteger _limit;
     NSMutableDictionary *_rules;
@@ -34,6 +35,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 
 @property (readonly) NSUInteger captureStart;
 @property (readonly) NSUInteger captureEnd;
+@property (readonly) NSString* string;
 @property (retain) Compiler *compiler;
 
 - (void) addRule:(PEGParserRule)rule withName:(NSString *)name;

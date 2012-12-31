@@ -4,6 +4,18 @@
 
 #import "PEGParser.h"
 
+// define some LLVM3 macros if the code is compiled with a different compiler (ie LLVMGCC42)
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#ifndef __has_extension
+#define __has_extension __has_feature // Compatibility with pre-3.0 compilers.
+#endif
+
+#if __has_feature(objc_arc) && __clang_major__ >= 3
+#define ARC_ENABLED 1
+#endif // __has_feature(objc_arc)
+
 #import "Compiler.h"
 
 @interface PEGParserCapture : NSObject
@@ -21,11 +33,14 @@
 @synthesize begin = _begin;
 @synthesize end = _end;
 @synthesize action = _action;
+#ifndef ARC_ENABLED
 - (void) dealloc
 {
     [_action release];
     [super dealloc];
 }
+#endif
+
 @end
 
 
@@ -35,6 +50,7 @@
 
 @synthesize captureStart = yybegin;
 @synthesize captureEnd = yyend;
+@synthesize string = _string;
 @synthesize compiler = _compiler;
 
 //==================================================================================================
@@ -51,8 +67,8 @@
 #define yydebug(args) { fprintf args; }
 #define yyprintf(args)	{ fprintf args; fprintf(stderr," @ %s\n",[[_string substringFromIndex:_index] UTF8String]); }
 #else
-#define yyprintf(args)
 #define yydebug(args)
+#define yyprintf(args)
 #endif
 
 - (BOOL) _refill
@@ -64,8 +80,18 @@
     if (nextString)
     {
         nextString = [_string stringByAppendingString:nextString];
+#ifdef ARC_ENABLED
+        _string = nextString;
+#else
         [_string release];
         _string = [nextString retain];
+#endif
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__
+        cstring = [_string UTF8String];
+#else
+        cstring = [[_string lowercaseString] UTF8String];
+#endif
+
     }
     _limit = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
     yyprintf((stderr, "refill"));
@@ -151,19 +177,21 @@
 
 - (BOOL) matchString:(char *)s
 {
-    NSAutoreleasePool *pool = [NSAutoreleasePool new];
-#ifndef PEGPARSER_CASE_INSENSITIVE
-    const char *cstring = [_string UTF8String];
+#ifdef ARC_ENABLED
+    @autoreleasepool {
 #else
-    const char *cstring = [[_string lowercaseString] UTF8String];
+    NSAutoreleasePool *pool = [NSAutoreleasePool new];
 #endif
+// PEGPARSER
     NSInteger saved = _index;
     while (*s)
     {
         if (_index >= _limit && ![self _refill]) return NO;
         if (cstring[_index] != *s)
         {
+#ifndef ARC_ENABLED
             [pool drain];
+#endif
             _index = saved;
             yyprintf((stderr, "  fail matchString '%s'", s));
             return NO;
@@ -171,7 +199,11 @@
         ++s;
         ++_index;
     }
+#ifdef ARC_ENABLED
+  }
+#else
     [pool drain];
+#endif
     yyprintf((stderr, "  ok   matchString '%s'", s));
     return YES;
 }
@@ -197,7 +229,9 @@
     capture.end    = yyend;
     capture.action = action;
     [_captures addObject:capture];
+#ifndef ARC_ENABLED
     [capture release];
+#endif
 }
 
 - (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end
@@ -219,8 +253,18 @@
 - (void) yyCommit
 {
     NSString *newString = [_string substringFromIndex:_index];
+#ifdef ARC_ENABLED
+    _string = newString;
+#else
     [_string release];
     _string = [newString retain];
+#endif
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__
+    cstring = [_string UTF8String];
+#else
+    cstring = [[_string lowercaseString] UTF8String];
+#endif
+
     _limit -= _index;
     _index = 0;
 
@@ -230,12 +274,14 @@
 }
 
 static PEGParserRule __AND = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'AND'\n"))
     if (![parser matchString:"&"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Action = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Action'\n"))
     if (![parser matchString:"{"]) return NO;
     [parser beginCapture];
     [parser matchMany:^(PEGParser *parser){
@@ -248,18 +294,21 @@ static PEGParserRule __Action = ^(PEGParser *parser){
 };
 
 static PEGParserRule __BEGIN = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'BEGIN'\n"))
     if (![parser matchString:"<"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __CLOSE = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'CLOSE'\n"))
     if (![parser matchString:")"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Char = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Char'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchString:"\\"]) return NO;
@@ -294,6 +343,7 @@ static PEGParserRule __Char = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Class = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Class'\n"))
     if (![parser matchString:"["]) return NO;
     [parser beginCapture];
     [parser matchMany:^(PEGParser *parser){
@@ -309,6 +359,7 @@ static PEGParserRule __Class = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Code = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Code'\n"))
     if (![parser matchString:"{{"]) return NO;
     [parser beginCapture];
     [parser matchMany:^(PEGParser *parser){
@@ -321,6 +372,7 @@ static PEGParserRule __Code = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Comment = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Comment'\n"))
     if (![parser matchString:"#"]) return NO;
     [parser matchMany:^(PEGParser *parser){
     if (![parser lookAhead:^(PEGParser *parser){
@@ -333,12 +385,14 @@ static PEGParserRule __Comment = ^(PEGParser *parser){
 };
 
 static PEGParserRule __DOT = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'DOT'\n"))
     if (![parser matchString:"."]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Declaration = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Declaration'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"OPTION"]) return NO;
@@ -381,6 +435,7 @@ static PEGParserRule __Declaration = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Definition = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Definition'\n"))
     if (![parser matchRule:@"Identifier"]) return NO;
     [parser performAction:^(PEGParser *self, NSString *text){ [self.compiler startRule:text];     }];    if (![parser matchRule:@"LEFTARROW"]) return NO;
     if (![parser matchRule:@"Expression"]) return NO;
@@ -388,12 +443,14 @@ static PEGParserRule __Definition = ^(PEGParser *parser){
 };
 
 static PEGParserRule __END = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'END'\n"))
     if (![parser matchString:">"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Effect = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Effect'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"Code"]) return NO;
@@ -412,6 +469,7 @@ static PEGParserRule __Effect = ^(PEGParser *parser){
 };
 
 static PEGParserRule __EndOfDecl = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'EndOfDecl'\n"))
     if (![parser matchString:";"]) return NO;
     [parser matchMany:^(PEGParser *parser){
     if (![parser matchRule:@"HorizSpace"]) return NO;
@@ -428,6 +486,7 @@ static PEGParserRule __EndOfDecl = ^(PEGParser *parser){
 };
 
 static PEGParserRule __EndOfFile = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'EndOfFile'\n"))
     if (![parser lookAhead:^(PEGParser *parser){
     if ([parser matchDot]) return NO;
     return YES;    }]) return NO;
@@ -435,6 +494,7 @@ static PEGParserRule __EndOfFile = ^(PEGParser *parser){
 };
 
 static PEGParserRule __EndOfLine = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'EndOfLine'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchString:"\r\n"]) return NO;
@@ -450,6 +510,7 @@ static PEGParserRule __EndOfLine = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Expression = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Expression'\n"))
     if (![parser matchRule:@"Sequence"]) return NO;
     [parser matchMany:^(PEGParser *parser){
     if (![parser matchRule:@"SLASH"]) return NO;
@@ -459,6 +520,7 @@ static PEGParserRule __Expression = ^(PEGParser *parser){
 };
 
 static PEGParserRule __ExtraCode = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'ExtraCode'\n"))
     if (![parser matchString:"%%"]) return NO;
     [parser beginCapture];
     [parser matchMany:^(PEGParser *parser){
@@ -470,6 +532,7 @@ static PEGParserRule __ExtraCode = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Grammar = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Grammar'\n"))
     if (![parser matchRule:@"Spacing"]) return NO;
     [parser matchMany:^(PEGParser *parser){
     if (![parser matchRule:@"Declaration"]) return NO;
@@ -483,6 +546,7 @@ static PEGParserRule __Grammar = ^(PEGParser *parser){
 };
 
 static PEGParserRule __HorizSpace = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'HorizSpace'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchString:" "]) return NO;
@@ -495,6 +559,7 @@ static PEGParserRule __HorizSpace = ^(PEGParser *parser){
 };
 
 static PEGParserRule __IdentCont = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'IdentCont'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"IdentStart"]) return NO;
@@ -507,11 +572,13 @@ static PEGParserRule __IdentCont = ^(PEGParser *parser){
 };
 
 static PEGParserRule __IdentStart = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'IdentStart'\n"))
     if (![parser matchClass:(unsigned char *)"\000\000\000\000\000\000\000\000\376\377\377\207\376\377\377\007\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Identifier = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Identifier'\n"))
     [parser beginCapture];
     if (![parser matchRule:@"IdentStart"]) return NO;
     [parser matchMany:^(PEGParser *parser){
@@ -523,12 +590,14 @@ static PEGParserRule __Identifier = ^(PEGParser *parser){
 };
 
 static PEGParserRule __LEFTARROW = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'LEFTARROW'\n"))
     if (![parser matchString:"<-"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Literal = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Literal'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchClass:(unsigned char *)"\000\000\000\000\200\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"]) return NO;
@@ -561,18 +630,21 @@ static PEGParserRule __Literal = ^(PEGParser *parser){
 };
 
 static PEGParserRule __NOT = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'NOT'\n"))
     if (![parser matchString:"!"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __OPEN = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'OPEN'\n"))
     if (![parser matchString:"("]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __OPTION = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'OPTION'\n"))
     if (![parser matchString:"@option"]) return NO;
     if (![parser matchMany:^(PEGParser *parser){
     if (![parser matchRule:@"HorizSpace"]) return NO;
@@ -581,12 +653,14 @@ static PEGParserRule __OPTION = ^(PEGParser *parser){
 };
 
 static PEGParserRule __PLUS = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'PLUS'\n"))
     if (![parser matchString:"+"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __PROPERTY = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'PROPERTY'\n"))
     if (![parser matchString:"@property"]) return NO;
     if (![parser matchMany:^(PEGParser *parser){
     if (![parser matchRule:@"HorizSpace"]) return NO;
@@ -595,6 +669,7 @@ static PEGParserRule __PROPERTY = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Prefix = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Prefix'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"AND"]) return NO;
@@ -623,6 +698,7 @@ static PEGParserRule __Prefix = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Primary = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Primary'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"Identifier"]) return NO;
@@ -649,6 +725,7 @@ static PEGParserRule __Primary = ^(PEGParser *parser){
 };
 
 static PEGParserRule __PropIdentifier = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'PropIdentifier'\n"))
     [parser beginCapture];
     if (![parser matchRule:@"IdentStart"]) return NO;
     [parser matchMany:^(PEGParser *parser){
@@ -662,6 +739,7 @@ static PEGParserRule __PropIdentifier = ^(PEGParser *parser){
 };
 
 static PEGParserRule __PropParamaters = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'PropParamaters'\n"))
     [parser beginCapture];
     if (![parser matchString:"("]) return NO;
     if (![parser matchMany:^(PEGParser *parser){
@@ -676,12 +754,14 @@ static PEGParserRule __PropParamaters = ^(PEGParser *parser){
 };
 
 static PEGParserRule __QUESTION = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'QUESTION'\n"))
     if (![parser matchString:"?"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Range = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Range'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"Char"]) return NO;
@@ -696,18 +776,21 @@ static PEGParserRule __Range = ^(PEGParser *parser){
 };
 
 static PEGParserRule __SLASH = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'SLASH'\n"))
     if (![parser matchString:"/"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __STAR = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'STAR'\n"))
     if (![parser matchString:"*"]) return NO;
     if (![parser matchRule:@"Spacing"]) return NO;
     return YES;
 };
 
 static PEGParserRule __Sequence = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Sequence'\n"))
     [parser matchOne:^(PEGParser *parser){
     if (![parser matchRule:@"Prefix"]) return NO;
     return YES;    }];
@@ -718,6 +801,7 @@ static PEGParserRule __Sequence = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Space = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Space'\n"))
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
     if (![parser matchString:" "]) return NO;
@@ -733,6 +817,7 @@ static PEGParserRule __Space = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Spacing = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Spacing'\n"))
     [parser matchMany:^(PEGParser *parser){
     if (![parser matchOne:^(PEGParser *parser){
     if ([parser matchOne:^(PEGParser *parser){
@@ -747,6 +832,7 @@ static PEGParserRule __Spacing = ^(PEGParser *parser){
 };
 
 static PEGParserRule __Suffix = ^(PEGParser *parser){
+    yydebug((stderr, "Rule: 'Suffix'\n"))
     if (![parser matchRule:@"Primary"]) return NO;
     [parser matchOne:^(PEGParser *parser){
     if (![parser matchOne:^(PEGParser *parser){
@@ -770,6 +856,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     if (!_string)
     {
         _string = [NSString new];
+        cstring = [_string UTF8String];
         _limit = 0;
         _index = 0;
     }
@@ -782,8 +869,11 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
         [self yyDone];
     [self yyCommit];
     
+#ifndef ARC_ENABLED
     [_string release];
+#endif
     _string = nil;
+    cstring = nil;
     
     return matched;
 }
@@ -850,6 +940,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
 }
 
 
+#ifndef ARC_ENABLED
 - (void) dealloc
 {
     [_string release];
@@ -858,6 +949,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
 
     [super dealloc];
 }
+#endif
 
 
 //==================================================================================================
@@ -872,7 +964,9 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     {
         rules = [NSMutableArray new];
         [_rules setObject:rules forKey:name];
+#ifndef ARC_ENABLED
         [rules release];
+#endif
     }
     
     [rules addObject:rule];
@@ -889,11 +983,20 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
 - (BOOL) parseString:(NSString *)string
 {
     _string = [string copy];
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__
+    cstring = [_string UTF8String];
+#else
+    cstring = [[_string lowercaseString] UTF8String];
+#endif
+
     _limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
     _index  = 0;
     BOOL retval = [self _parse];
+#ifndef ARC_ENABLED
     [_string release];
+#endif
     _string = nil;
+    cstring = nil;
     return retval;
 }
 
