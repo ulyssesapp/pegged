@@ -70,6 +70,11 @@
 - (id)nextResult;
 
 /*!
+ @abstract Accesses the next result of a sub-rule. Returns nil, if none is available
+ */
+- (id)nextResultOrNil;
+
+/*!
  @abstract Accesses the result of a sub-rule with a certain index
  */
 - (id)resultAtIndex:(NSInteger)index;
