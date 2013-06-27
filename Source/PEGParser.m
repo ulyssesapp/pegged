@@ -228,6 +228,8 @@
     yybegin -= _index;
     yyend -= _index;
     [_captures removeAllObjects];
+	[_lastResultCollectionStart removeAllObjects];
+	[_actionResults removeAllObjects];
 }
 
 static PEGParserRule __AND = ^(PEGParser *parser){
@@ -846,6 +848,8 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     {
         _rules = [NSMutableDictionary new];
         _captures = [NSMutableArray new];
+		_lastResultCollectionStart = [NSMutableArray new];
+		_actionResults = [NSMutableArray new];
         [self addRule:__AND withName:@"AND"];
         [self addRule:__Action withName:@"Action"];
         [self addRule:__BEGIN withName:@"BEGIN"];
@@ -891,6 +895,38 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     }
     
     return self;
+}
+
+
+//==================================================================================================
+#pragma mark -
+#pragma mark Handling action results
+//==================================================================================================
+- (void)pushResult:(id)result
+{
+	[_actionResults addObject: result];
+}
+
+- (id)popResult{
+	id result = [_actionResults lastObject];
+	[_actionResults removeLastObject];
+	return result;
+}
+
+- (void)beginCollectingResults
+{
+	[_lastResultCollectionStart addObject: @(_actionResults.count -1)];
+}
+
+- (NSArray *)endCollectingResults
+{
+	NSInteger index = [_lastResultCollectionStart.lastObject integerValue];
+	[_lastResultCollectionStart removeLastObject];
+	
+	NSArray *subarray = [_actionResults subarrayWithRange: NSMakeRange(index, _actionResults.count)];
+	[_actionResults removeObjectsInRange: NSMakeRange(index, _actionResults.count)];
+	
+	return subarray;
 }
 
 

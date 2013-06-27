@@ -416,6 +416,9 @@ typedef void (^%@Action)(%@ *self, NSString *text);\n\
     NSUInteger yyend;\n\
     NSMutableArray *_captures;\n\
 \n\
+	NSMutableArray *_actionResults;\n\
+	NSMutableArray *_lastResultCollectionStart;\n\
+\n\
 %@\
 }\n\
 \n\
@@ -443,6 +446,12 @@ typedef void (^%@Action)(%@ *self, NSString *text);\n\
 \n\
 - (BOOL) parse;\n\
 - (BOOL) parseString:(NSString *)string;\n\
+\n\
+- (void) pushResult:(id)match;\n\
+- (id) popResult;\n\
+\n\
+- (void) beginCollectingResults;\n\
+- (NSArray *) endCollectingResults;\n\
 \n\
 @end\n\
 \n\
@@ -687,6 +696,8 @@ const NSString *__sourceTemplate = @"\
     yybegin -= _index;\n\
     yyend -= _index;\n\
     [_captures removeAllObjects];\n\
+	[_lastResultCollectionStart removeAllObjects];\n\
+	[_actionResults removeAllObjects];\n\
 }\n\
 \n\
 %@\
@@ -729,10 +740,45 @@ const NSString *__sourceTemplate = @"\
     {\n\
         _rules = [NSMutableDictionary new];\n\
         _captures = [NSMutableArray new];\n\
+		_lastResultCollectionStart = [NSMutableArray new];\n\
+		_actionResults = [NSMutableArray new];\n\
 %@\
     }\n\
     \n\
     return self;\n\
+}\n\
+\n\
+\n\
+//==================================================================================================\n\
+#pragma mark -\n\
+#pragma mark Handling action results\n\
+//==================================================================================================\n\
+- (void)pushResult:(id)result\n\
+{\n\
+	[_actionResults addObject: result];\n\
+}\n\
+\n\
+- (id)popResult\
+{\n\
+	id result = [_actionResults lastObject];\n\
+	[_actionResults removeLastObject];\n\
+	return result;\n\
+}\n\
+\n\
+- (void)beginCollectingResults\n\
+{\n\
+	[_lastResultCollectionStart addObject: @(_actionResults.count -1)];\n\
+}\n\
+\n\
+- (NSArray *)endCollectingResults\n\
+{\n\
+	NSInteger index = [_lastResultCollectionStart.lastObject integerValue];\n\
+	[_lastResultCollectionStart removeLastObject];\n\
+	\n\
+	NSArray *subarray = [_actionResults subarrayWithRange: NSMakeRange(index, _actionResults.count)];\n\
+	[_actionResults removeObjectsInRange: NSMakeRange(index, _actionResults.count)];\n\
+	\n\
+	return subarray;\n\
 }\n\
 \n\
 \n\

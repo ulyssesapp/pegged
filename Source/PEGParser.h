@@ -28,6 +28,9 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     NSUInteger yyend;
     NSMutableArray *_captures;
 
+	NSMutableArray *_actionResults;
+	NSMutableArray *_lastResultCollectionStart;
+
     Compiler *_compiler;
 }
 
@@ -55,6 +58,12 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 
 - (BOOL) parse;
 - (BOOL) parseString:(NSString *)string;
+
+- (void) pushResult:(id)match;
+- (id) popResult;
+
+- (void) beginCollectingResults;
+- (NSArray *) endCollectingResults;
 
 @end
 
