@@ -461,14 +461,6 @@ const NSString *__sourceTemplate = @"\
 \n\
 #import \"%@.h\"\n\
 \n\
-// define some LLVM3 macros if the code is compiled with a different compiler (ie LLVMGCC42)\n\
-#ifndef __has_feature\n\
-#define __has_feature(x) 0\n\
-#endif\n\
-#ifndef __has_extension\n\
-#define __has_extension __has_feature // Compatibility with pre-3.0 compilers.\n\
-#endif\n\
-\n\
 %@\
 \n\
 @interface %@Capture : NSObject\n\
