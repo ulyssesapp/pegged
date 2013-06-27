@@ -102,7 +102,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
         _captures = [NSMutableArray new];
 		_actionResults = [NSMutableArray new];
 		
-		//!$ParserDeclarations
+//!$ParserDeclarations
     }
     
     return self;

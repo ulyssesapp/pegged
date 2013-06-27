@@ -21,13 +21,13 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat:@"    if (%@%@) return NO;\n",
+    [code appendFormat:@"if (%@%@)\n\treturn NO;\n",
      self.inverted ? @"" : @"!", [self condition]];
     
 	NSString *acceptanceCode = self.compileIfAccepted;
 	
 	if (acceptanceCode)
-		[code appendFormat: @"    %@", self.compileIfAccepted];
+		[code appendFormat: @"else\n\t%@\n", self.compileIfAccepted];
 	
     return code;
 }

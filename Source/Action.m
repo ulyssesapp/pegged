@@ -20,11 +20,13 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat:@"    [parser performActionUsingCaptures:*localCaptures block:^id(%@ *self, NSString *text){", parserClassName];
-    [code appendString:_code];
+    [code appendFormat:@"[parser performActionUsingCaptures:*localCaptures block:^id(%@ *self, NSString *text){\n", parserClassName];
+    [code appendString:[[_code stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
 	if (!_hasReturnValue)
-		[code appendString: @"return nil;"];
-    [code appendString:@"    }];"];
+		[code appendString: @"\n\n\treturn nil;\n"];
+	else
+		[code appendString: @"\n"];
+    [code appendString:@"}];\n"];
     	
     return code;
 }

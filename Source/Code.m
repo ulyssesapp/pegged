@@ -20,7 +20,7 @@
 
 - (NSString *) compile:(NSString *)failLabel
 {
-    return [NSString stringWithFormat:@"    %@;\n", self.code];
+    return [NSString stringWithFormat:@"%@;\n", self.code];
 }
 
 

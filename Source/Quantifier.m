@@ -27,19 +27,13 @@
     
     NSString *selector = self.repeats ? @"matchMany" : @"matchOne";
     
-    if (self.optional)
-    {
-        [code appendString:@"    "];
-    }
-    else
-    {
-        [code appendString:@"    if (!"];
-    }
+    if (!self.optional)
+		[code appendString:@"if (!"];
     
     [code appendFormat:@"[parser %@WithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", selector, parserClassName];
-    [code appendString:[self.node compile:parserClassName]];
-    [code appendString:@"    return YES;"];
-    [code appendString:@"    }]"];
+    [code appendString:[[[self.node compile:parserClassName] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+    [code appendString:@"\n\treturn YES;\n"];
+    [code appendString:@"}]"];
     
     if (self.optional)
     {
@@ -47,7 +41,7 @@
     }
     else
     {
-        [code appendFormat:@") return NO;\n"];
+        [code appendFormat:@")\n\treturn NO;\n"];
     }
     
     return code;

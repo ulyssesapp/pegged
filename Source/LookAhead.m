@@ -23,10 +23,10 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat:@"    if (![parser lookAheadWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
-    [code appendString:[self.node compile:parserClassName]];
-    [code appendString:@"    return YES;"];
-    [code appendFormat:@"    }]) return NO;\n"];
+    [code appendFormat:@"if (![parser lookAheadWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
+    [code appendString:[[[self.node compile:parserClassName] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+    [code appendString:@"\n\n\treturn YES;\n"];
+    [code appendString:@"}])\n\treturn NO;\n"];
     
     return code;
 }

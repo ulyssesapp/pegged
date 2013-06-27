@@ -42,16 +42,16 @@
     
     NSString *selector = self.inverted ? @"invert" : @"matchOne";
     
-    [code appendFormat:@"    if (![parser %@WithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", selector, parserClassName];
+    [code appendFormat:@"if (![parser %@WithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", selector, parserClassName];
     for (Node *node in self.nodes)
     {
-        [code appendFormat:@"    if ([parser matchOneWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
-        [code appendString:[node compile:parserClassName]];
-        [code appendString:@"    return YES;"];
-        [code appendString:@"    }]) return YES;\n"];
+        [code appendFormat:@"\tif ([parser matchOneWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
+        [code appendString:[[[node compile:parserClassName] stringIndentedByCount: 2] stringByRemovingTrailingWhitespace]];
+        [code appendString:@"\n\t\treturn YES;"];
+        [code appendString:@"\n\t}])\n\t\treturn YES;\n\n"];
     }
-    [code appendString:@"    return NO;"];
-    [code appendString:@"    }]) return NO;\n"];
+    [code appendString:@"\treturn NO;\n"];
+    [code appendString:@"}])\n\treturn NO;\n\n"];
     
     return code;
 }

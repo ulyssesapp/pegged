@@ -42,16 +42,18 @@
     
     if (self.inverted)
     {
-        [code appendFormat:@"    [parser invertWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
+        [code appendFormat:@"[parser invertWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
     }
     
-    for (Node *node in self.nodes)
-        [code appendString:[node compile:parserClassName]];
+    for (Node *node in self.nodes) {
+        [code appendString:[[[node compile:parserClassName] stringIndentedByCount: (self.inverted ? 1 : 0)] stringByRemovingTrailingWhitespace]];
+		[code appendString: @"\n\n"];
+	}
     
     if (self.inverted)
     {
-        [code appendString:@"    return YES;"];
-        [code appendString:@"    }];\n"];
+        [code appendString:@"\treturn YES;\n"];
+        [code appendString:@"}];\n"];
     }
     
     return code;

@@ -46,9 +46,9 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat: @"    yydebug(@\"Rule: '%@'\\n\");\n", self.name];
-    [code appendString: [self.definition compile:parserClassName]];
-    [code appendString: @"    return YES;\n"];
+    [code appendFormat: @"yydebug(@\"Rule: '%@'\\n\");\n\n", self.name];
+    [code appendString: [[self.definition compile:parserClassName] stringByRemovingTrailingWhitespace]];
+    [code appendString: @"\n\nreturn YES;\n"];
     
     return code;
 }

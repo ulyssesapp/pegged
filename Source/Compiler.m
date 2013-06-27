@@ -145,14 +145,14 @@
             continue;
         }
         
-        [declarations appendFormat:@"        [self addRule:__%@ withName:@\"%@\"];\n", rule.name, rule.name];
+        [declarations appendFormat:@"\t\t[self addRule:__%@ withName:@\"%@\"];\n", rule.name, rule.name];
         [definitions appendFormat:@"static %@Rule __%@ = ^(%@ *parser, NSInteger *localCaptures){\n", self.className, rule.name, self.className];
-        [definitions appendString:[rule compile:self.className]];
-        [definitions appendFormat:@"};\n\n"];
+        [definitions appendString:[[[rule compile:self.className] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+        [definitions appendFormat:@"\n};\n\n"];
     }
     
 	NSMutableString *source = [self getTemplateWithName: "SRCTEMP"];
-	NSLog(@"%@ %@", imports, _imports);	
+
 	[source replaceOccurrencesOfString:@"//!$" withString:@"$" options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"Parser.h" withString:@"ParserClass.h" options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"ParserClass" withString:self.className options:0 range:NSMakeRange(0, source.length)];

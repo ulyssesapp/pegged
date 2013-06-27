@@ -9,6 +9,7 @@
 # [2] http://piumarta.com/software/peg/
 # 
 
+@import "Compiler.h";
 @property (strong) Compiler *compiler;
 
 # Hierarchical syntax
