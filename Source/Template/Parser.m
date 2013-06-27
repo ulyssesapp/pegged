@@ -7,31 +7,47 @@
 
 //!$Imports
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef matchDEBUG
+	#define yydebug(args)		{ fprintf args; }
+	#define yyprintf(args)		{ fprintf args; fprintf(stderr," @ %s",[[_string substringFromIndex:_index] UTF8String]); }
+#else
+	#define yydebug(args)
+	#define yyprintf(args)
+#endif
+
+
+#pragma mark - Internal types
+
 // A block implementing a certain parsing rule
-typedef BOOL (^$ParserClassRule)($ParserClass *parser);
+typedef BOOL (^ParserClassRule)(ParserClass *parser);
 
 // A block implementing a certain parser action
-typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
+typedef void (^ParserClassAction)(ParserClass *self, NSString *text);
+
 
 /*!
  @abstract Internally used class for storing captured text results for actions.
  */
-@interface $ParserClassCapture : NSObject
+@interface ParserClassCapture : NSObject
 
 @property (assign) NSUInteger begin;
 @property (assign) NSUInteger end;
-@property (copy) $ParserClassAction action;
+@property (copy) ParserClassAction action;
 
 @end
 
-@implementation $ParserClassCapture
+@implementation ParserClassCapture
 @end
 
 
 /*!
  @abstract Internal parser methods
  */
-@interface $ParserClass ()
+@interface ParserClass ()
 {
 	NSString *_string;
 	const char *cstring;
@@ -43,9 +59,6 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
 	NSUInteger yybegin;
 	NSUInteger yyend;
 	NSMutableArray *_captures;
-	
-	NSMutableArray *_actionResults;
-	NSMutableArray *_lastResultCollectionStart;
 }
 
 // Parser state information
@@ -53,75 +66,48 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
 @property (readonly) NSUInteger captureEnd;
 @property (readonly) NSString* string;
 
-// Actions
-- (void)beginCapture;
-- (void)endCapture;
-- (void)performAction:($ParserClassAction)action;
-
-// Handling action results
-- (void)pushResult:(id)match;
-- (id)popResult;
-
-- (void)beginCollectingResults;
-- (NSArray *)endCollectingResults;
-
-
-// Matching operations
-- (void)addRule:($ParserClassRule)rule withName:(NSString *)name;
-
-- (BOOL)lookAhead:($ParserClassRule)rule;
-- (BOOL)invert:($ParserClassRule)rule;
-- (BOOL)matchRule:(NSString *)ruleName;
-- (BOOL)matchOne:($ParserClassRule)rule;
-- (BOOL)matchMany:($ParserClassRule)rule;
-- (BOOL)matchDot;
-- (BOOL)matchString:(char *)s;
-- (BOOL)matchClass:(unsigned char *)bits;
-
 @end
 
 
-@implementation $ParserClass
+@implementation ParserClass
 
 @synthesize captureStart=yybegin, captureEnd=yyend, string=_string;
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Rules
-//==================================================================================================
+- (id)init
+{
+    self = [super init];
+    
+    if (self)
+    {
+        _rules = [NSMutableDictionary new];
+        _captures = [NSMutableArray new];
+		
+		//!$ParserDeclarations
+    }
+    
+    return self;
+}
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#ifdef matchDEBUG
-#define yydebug(args) { fprintf args; }
-#define yyprintf(args)	{ fprintf args; fprintf(stderr," @ %s",[[_string substringFromIndex:_index] UTF8String]); }
-#else
-#define yydebug(args)
-#define yyprintf(args)
-#endif
+#pragma mark - String matching
 
-- (void) beginCapture
+- (void)beginCapture
 {
     if (_capturing) yybegin = _index;
 }
 
-
-- (void) endCapture
+- (void)endCapture
 {
     if (_capturing) yyend = _index;
 }
 
-
-- (BOOL) invert:($ParserClassRule)rule
+- (BOOL)invert:(ParserClassRule)rule
 {
     return ![self matchOne:rule];
 }
 
-
-- (BOOL) lookAhead:($ParserClassRule)rule
+- (BOOL)lookAhead:(ParserClassRule)rule
 {
     NSUInteger index=_index;
     BOOL capturing = _capturing;
@@ -132,16 +118,14 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return matched;
 }
 
-
-- (BOOL) matchDot
+- (BOOL)matchDot
 {
     if (_index >= _limit) return NO;
     ++_index;
     return YES;
 }
 
-
-- (BOOL) matchOne:($ParserClassRule)rule
+- (BOOL)matchOne:(ParserClassRule)rule
 {
     NSUInteger index=_index, captureCount=[_captures count];
     if (rule(self))
@@ -155,8 +139,7 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return NO;
 }
 
-
-- (BOOL) matchMany:($ParserClassRule)rule
+- (BOOL)matchMany:(ParserClassRule)rule
 {
     if (![self matchOne:rule])
         return NO;
@@ -165,21 +148,19 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return YES;
 }
 
-
-- (BOOL) matchRule:(NSString *)ruleName
+- (BOOL)matchRule:(NSString *)ruleName
 {
     NSArray *rules = [_rules objectForKey:ruleName];
     if (![rules count])
         NSLog(@"Couldn't find rule name \"%@\".", ruleName);
 		
-		for ($ParserClassRule rule in rules)
+		for (ParserClassRule rule in rules)
 			if ([self matchOne:rule])
 				return YES;
     return NO;
 }
 
-
-- (BOOL) matchString:(char *)s
+- (BOOL)matchString:(char *)s
 {
     @autoreleasepool {
 		NSInteger saved = _index;
@@ -200,7 +181,7 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return YES;
 }
 
-- (BOOL) matchClass:(unsigned char *)bits
+- (BOOL)matchClass:(unsigned char *)bits
 {
     if (_index >= _limit) return NO;
     int c = [_string characterAtIndex:_index];
@@ -214,16 +195,40 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return NO;
 }
 
-- (void) performAction:($ParserClassAction)action
+
+
+#pragma mark - Action handling
+
+- (void)performAction:(ParserClassAction)action
 {
-    $ParserClassCapture *capture = [$ParserClassCapture new];
+    ParserClassCapture *capture = [ParserClassCapture new];
     capture.begin  = yybegin;
     capture.end    = yyend;
     capture.action = action;
     [_captures addObject:capture];
 }
 
-- (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end
+
+#pragma mark - Rule definitions
+
+- (void)addRule:(ParserClassRule)rule withName:(NSString *)name
+{
+    NSMutableArray *rules = [_rules objectForKey:name];
+    if (!rules)
+    {
+        rules = [NSMutableArray new];
+        [_rules setObject:rules forKey:name];
+    }
+    
+    [rules addObject:rule];
+}
+
+//!$ParserDefinitions
+
+
+#pragma mark - Parsing methods
+
+- (NSString *)yyText:(NSUInteger)begin to:(NSUInteger)end
 {
     NSInteger len = end - begin;
     if (len <= 0)
@@ -231,15 +236,15 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return [_string substringWithRange:NSMakeRange(begin, len)];
 }
 
-- (void) yyDone
+- (void)yyDone
 {
-    for ($ParserClassCapture *capture in _captures)
+    for (ParserClassCapture *capture in _captures)
     {
         capture.action(self, [self yyText:capture.begin to:capture.end]);
     }
 }
 
-- (void) yyCommit
+- (void)yyCommit
 {
     NSString *newString = [_string substringFromIndex:_index];
     _string = newString;
@@ -255,13 +260,9 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     yybegin -= _index;
     yyend -= _index;
     [_captures removeAllObjects];
-	[_lastResultCollectionStart removeAllObjects];
-	[_actionResults removeAllObjects];
 }
 
-//!$ParserDefinitions
-
-- (BOOL) _parse
+- (BOOL)_parse
 {
     if (!_string)
     {
@@ -285,81 +286,7 @@ typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
     return matched;
 }
 
-
-//==================================================================================================
-#pragma mark -
-#pragma mark NSObject Methods
-//==================================================================================================
-
-- (id) init
-{
-    self = [super init];
-    
-    if (self)
-    {
-        _rules = [NSMutableDictionary new];
-        _captures = [NSMutableArray new];
-		_lastResultCollectionStart = [NSMutableArray new];
-		_actionResults = [NSMutableArray new];
-		
-		//!$ParserDeclarations
-    }
-    
-    return self;
-}
-
-
-//==================================================================================================
-#pragma mark -
-#pragma mark Handling action results
-//==================================================================================================
-- (void)pushResult:(id)result
-{
-	[_actionResults addObject: result];
-}
-
-- (id)popResult
-{
-	id result = [_actionResults lastObject];
-	[_actionResults removeLastObject];
-	return result;
-}
-
-- (void)beginCollectingResults
-{
-	[_lastResultCollectionStart addObject: @(_actionResults.count -1)];
-}
-
-- (NSArray *)endCollectingResults
-{
-	NSInteger index = [_lastResultCollectionStart.lastObject integerValue];
-	[_lastResultCollectionStart removeLastObject];
-	
-	NSArray *subarray = [_actionResults subarrayWithRange: NSMakeRange(index, _actionResults.count)];
-	[_actionResults removeObjectsInRange: NSMakeRange(index, _actionResults.count)];
-	
-	return subarray;
-}
-
-
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
-
-- (void) addRule:($ParserClassRule)rule withName:(NSString *)name
-{
-    NSMutableArray *rules = [_rules objectForKey:name];
-    if (!rules)
-    {
-        rules = [NSMutableArray new];
-        [_rules setObject:rules forKey:name];
-    }
-    
-    [rules addObject:rule];
-}
-
-- (BOOL) parseString:(NSString *)string
+- (BOOL)parseString:(NSString *)string
 {
     _string = [string copy];
 #ifndef __PEG_PARSER_CASE_INSENSITIVE__

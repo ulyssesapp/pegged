@@ -23,3 +23,54 @@
 - (BOOL) parseString:(NSString *)string;
 
 @end
+
+
+
+/*!
+ @abstract Methods available for parser actions
+ */
+@interface PEGParser (ParserActionHelper)
+
+
+#pragma mark - Parser state
+
+/*!
+ @abstract The start index of the current capture
+ */
+@property (readonly) NSUInteger captureStart;
+
+/*!
+ @abstract The end index of the current capture
+ */
+@property (readonly) NSUInteger captureEnd;
+
+/*!
+ @abstract The currently parsed string
+ */
+@property (readonly) NSString* string;
+
+
+
+#pragma mark - Action helpers
+
+/*!
+ @abstract Provides a result for the current rule
+ */
+- (void)pushResult:(id)result;
+
+/*!
+ @abstract Accesses the next result of a sub-rule
+ */
+- (void)nextResult;
+
+/*!
+ @abstract Accesses the result of a sub-rule with a certain index
+ */
+- (void)resultAtIndex:(NSInteger)index;
+
+/*!
+ @abstract Provies all sub-rule results as array.
+ */
+- (NSArray *)allResults;
+
+@end

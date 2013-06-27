@@ -8,11 +8,27 @@
 #import "Compiler.h"
 
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef matchDEBUG
+	#define yydebug(args)		{ fprintf args; }
+	#define yyprintf(args)		{ fprintf args; fprintf(stderr," @ %s",[[_string substringFromIndex:_index] UTF8String]); }
+#else
+	#define yydebug(args)
+	#define yyprintf(args)
+#endif
+
+
+#pragma mark - Internal types
+
 // A block implementing a certain parsing rule
 typedef BOOL (^PEGParserRule)(PEGParser *parser);
 
 // A block implementing a certain parser action
 typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
+
 
 /*!
  @abstract Internally used class for storing captured text results for actions.
@@ -44,40 +60,12 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 	NSUInteger yybegin;
 	NSUInteger yyend;
 	NSMutableArray *_captures;
-	
-	NSMutableArray *_actionResults;
-	NSMutableArray *_lastResultCollectionStart;
 }
 
 // Parser state information
 @property (readonly) NSUInteger captureStart;
 @property (readonly) NSUInteger captureEnd;
 @property (readonly) NSString* string;
-
-// Actions
-- (void)beginCapture;
-- (void)endCapture;
-- (void)performAction:(PEGParserAction)action;
-
-// Handling action results
-- (void)pushResult:(id)match;
-- (id)popResult;
-
-- (void)beginCollectingResults;
-- (NSArray *)endCollectingResults;
-
-
-// Matching operations
-- (void)addRule:(PEGParserRule)rule withName:(NSString *)name;
-
-- (BOOL)lookAhead:(PEGParserRule)rule;
-- (BOOL)invert:(PEGParserRule)rule;
-- (BOOL)matchRule:(NSString *)ruleName;
-- (BOOL)matchOne:(PEGParserRule)rule;
-- (BOOL)matchMany:(PEGParserRule)rule;
-- (BOOL)matchDot;
-- (BOOL)matchString:(char *)s;
-- (BOOL)matchClass:(unsigned char *)bits;
 
 @end
 
@@ -86,43 +74,83 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 
 @synthesize captureStart=yybegin, captureEnd=yyend, string=_string;
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Rules
-//==================================================================================================
+- (id)init
+{
+    self = [super init];
+    
+    if (self)
+    {
+        _rules = [NSMutableDictionary new];
+        _captures = [NSMutableArray new];
+		
+		        [self addRule:__AND withName:@"AND"];
+        [self addRule:__Action withName:@"Action"];
+        [self addRule:__BEGIN withName:@"BEGIN"];
+        [self addRule:__CLOSE withName:@"CLOSE"];
+        [self addRule:__Char withName:@"Char"];
+        [self addRule:__Class withName:@"Class"];
+        [self addRule:__Code withName:@"Code"];
+        [self addRule:__Comment withName:@"Comment"];
+        [self addRule:__DOT withName:@"DOT"];
+        [self addRule:__Declaration withName:@"Declaration"];
+        [self addRule:__Definition withName:@"Definition"];
+        [self addRule:__END withName:@"END"];
+        [self addRule:__Effect withName:@"Effect"];
+        [self addRule:__EndOfDecl withName:@"EndOfDecl"];
+        [self addRule:__EndOfFile withName:@"EndOfFile"];
+        [self addRule:__EndOfLine withName:@"EndOfLine"];
+        [self addRule:__Expression withName:@"Expression"];
+        [self addRule:__ExtraCode withName:@"ExtraCode"];
+        [self addRule:__Grammar withName:@"Grammar"];
+        [self addRule:__HorizSpace withName:@"HorizSpace"];
+        [self addRule:__IdentCont withName:@"IdentCont"];
+        [self addRule:__IdentStart withName:@"IdentStart"];
+        [self addRule:__Identifier withName:@"Identifier"];
+        [self addRule:__LEFTARROW withName:@"LEFTARROW"];
+        [self addRule:__Literal withName:@"Literal"];
+        [self addRule:__NOT withName:@"NOT"];
+        [self addRule:__OPEN withName:@"OPEN"];
+        [self addRule:__OPTION withName:@"OPTION"];
+        [self addRule:__PLUS withName:@"PLUS"];
+        [self addRule:__PROPERTY withName:@"PROPERTY"];
+        [self addRule:__Prefix withName:@"Prefix"];
+        [self addRule:__Primary withName:@"Primary"];
+        [self addRule:__PropIdentifier withName:@"PropIdentifier"];
+        [self addRule:__PropParamaters withName:@"PropParamaters"];
+        [self addRule:__QUESTION withName:@"QUESTION"];
+        [self addRule:__Range withName:@"Range"];
+        [self addRule:__SLASH withName:@"SLASH"];
+        [self addRule:__STAR withName:@"STAR"];
+        [self addRule:__Sequence withName:@"Sequence"];
+        [self addRule:__Space withName:@"Space"];
+        [self addRule:__Spacing withName:@"Spacing"];
+        [self addRule:__Suffix withName:@"Suffix"];
+
+    }
+    
+    return self;
+}
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#ifdef matchDEBUG
-#define yydebug(args) { fprintf args; }
-#define yyprintf(args)	{ fprintf args; fprintf(stderr," @ %s",[[_string substringFromIndex:_index] UTF8String]); }
-#else
-#define yydebug(args)
-#define yyprintf(args)
-#endif
+#pragma mark - String matching
 
-- (void) beginCapture
+- (void)beginCapture
 {
     if (_capturing) yybegin = _index;
 }
 
-
-- (void) endCapture
+- (void)endCapture
 {
     if (_capturing) yyend = _index;
 }
 
-
-- (BOOL) invert:(PEGParserRule)rule
+- (BOOL)invert:(PEGParserRule)rule
 {
     return ![self matchOne:rule];
 }
 
-
-- (BOOL) lookAhead:(PEGParserRule)rule
+- (BOOL)lookAhead:(PEGParserRule)rule
 {
     NSUInteger index=_index;
     BOOL capturing = _capturing;
@@ -133,16 +161,14 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     return matched;
 }
 
-
-- (BOOL) matchDot
+- (BOOL)matchDot
 {
     if (_index >= _limit) return NO;
     ++_index;
     return YES;
 }
 
-
-- (BOOL) matchOne:(PEGParserRule)rule
+- (BOOL)matchOne:(PEGParserRule)rule
 {
     NSUInteger index=_index, captureCount=[_captures count];
     if (rule(self))
@@ -156,8 +182,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     return NO;
 }
 
-
-- (BOOL) matchMany:(PEGParserRule)rule
+- (BOOL)matchMany:(PEGParserRule)rule
 {
     if (![self matchOne:rule])
         return NO;
@@ -166,8 +191,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     return YES;
 }
 
-
-- (BOOL) matchRule:(NSString *)ruleName
+- (BOOL)matchRule:(NSString *)ruleName
 {
     NSArray *rules = [_rules objectForKey:ruleName];
     if (![rules count])
@@ -179,8 +203,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     return NO;
 }
 
-
-- (BOOL) matchString:(char *)s
+- (BOOL)matchString:(char *)s
 {
     @autoreleasepool {
 		NSInteger saved = _index;
@@ -201,7 +224,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     return YES;
 }
 
-- (BOOL) matchClass:(unsigned char *)bits
+- (BOOL)matchClass:(unsigned char *)bits
 {
     if (_index >= _limit) return NO;
     int c = [_string characterAtIndex:_index];
@@ -215,7 +238,11 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     return NO;
 }
 
-- (void) performAction:(PEGParserAction)action
+
+
+#pragma mark - Action handling
+
+- (void)performAction:(PEGParserAction)action
 {
     PEGParserCapture *capture = [PEGParserCapture new];
     capture.begin  = yybegin;
@@ -224,40 +251,19 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
     [_captures addObject:capture];
 }
 
-- (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end
-{
-    NSInteger len = end - begin;
-    if (len <= 0)
-        return @"";
-    return [_string substringWithRange:NSMakeRange(begin, len)];
-}
 
-- (void) yyDone
+#pragma mark - Rule definitions
+
+- (void)addRule:(PEGParserRule)rule withName:(NSString *)name
 {
-    for (PEGParserCapture *capture in _captures)
+    NSMutableArray *rules = [_rules objectForKey:name];
+    if (!rules)
     {
-        capture.action(self, [self yyText:capture.begin to:capture.end]);
+        rules = [NSMutableArray new];
+        [_rules setObject:rules forKey:name];
     }
-}
-
-- (void) yyCommit
-{
-    NSString *newString = [_string substringFromIndex:_index];
-    _string = newString;
-#ifndef __PEG_PARSER_CASE_INSENSITIVE__
-    cstring = [_string UTF8String];
-#else
-    cstring = [[_string lowercaseString] UTF8String];
-#endif
-	
-    _limit -= _index;
-    _index = 0;
-	
-    yybegin -= _index;
-    yyend -= _index;
-    [_captures removeAllObjects];
-	[_lastResultCollectionStart removeAllObjects];
-	[_actionResults removeAllObjects];
+    
+    [rules addObject:rule];
 }
 
 static PEGParserRule __AND = ^(PEGParser *parser){
@@ -839,7 +845,44 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
 
 
 
-- (BOOL) _parse
+
+#pragma mark - Parsing methods
+
+- (NSString *)yyText:(NSUInteger)begin to:(NSUInteger)end
+{
+    NSInteger len = end - begin;
+    if (len <= 0)
+        return @"";
+    return [_string substringWithRange:NSMakeRange(begin, len)];
+}
+
+- (void)yyDone
+{
+    for (PEGParserCapture *capture in _captures)
+    {
+        capture.action(self, [self yyText:capture.begin to:capture.end]);
+    }
+}
+
+- (void)yyCommit
+{
+    NSString *newString = [_string substringFromIndex:_index];
+    _string = newString;
+#ifndef __PEG_PARSER_CASE_INSENSITIVE__
+    cstring = [_string UTF8String];
+#else
+    cstring = [[_string lowercaseString] UTF8String];
+#endif
+	
+    _limit -= _index;
+    _index = 0;
+	
+    yybegin -= _index;
+    yyend -= _index;
+    [_captures removeAllObjects];
+}
+
+- (BOOL)_parse
 {
     if (!_string)
     {
@@ -863,123 +906,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     return matched;
 }
 
-
-//==================================================================================================
-#pragma mark -
-#pragma mark NSObject Methods
-//==================================================================================================
-
-- (id) init
-{
-    self = [super init];
-    
-    if (self)
-    {
-        _rules = [NSMutableDictionary new];
-        _captures = [NSMutableArray new];
-		_lastResultCollectionStart = [NSMutableArray new];
-		_actionResults = [NSMutableArray new];
-		
-		        [self addRule:__AND withName:@"AND"];
-        [self addRule:__Action withName:@"Action"];
-        [self addRule:__BEGIN withName:@"BEGIN"];
-        [self addRule:__CLOSE withName:@"CLOSE"];
-        [self addRule:__Char withName:@"Char"];
-        [self addRule:__Class withName:@"Class"];
-        [self addRule:__Code withName:@"Code"];
-        [self addRule:__Comment withName:@"Comment"];
-        [self addRule:__DOT withName:@"DOT"];
-        [self addRule:__Declaration withName:@"Declaration"];
-        [self addRule:__Definition withName:@"Definition"];
-        [self addRule:__END withName:@"END"];
-        [self addRule:__Effect withName:@"Effect"];
-        [self addRule:__EndOfDecl withName:@"EndOfDecl"];
-        [self addRule:__EndOfFile withName:@"EndOfFile"];
-        [self addRule:__EndOfLine withName:@"EndOfLine"];
-        [self addRule:__Expression withName:@"Expression"];
-        [self addRule:__ExtraCode withName:@"ExtraCode"];
-        [self addRule:__Grammar withName:@"Grammar"];
-        [self addRule:__HorizSpace withName:@"HorizSpace"];
-        [self addRule:__IdentCont withName:@"IdentCont"];
-        [self addRule:__IdentStart withName:@"IdentStart"];
-        [self addRule:__Identifier withName:@"Identifier"];
-        [self addRule:__LEFTARROW withName:@"LEFTARROW"];
-        [self addRule:__Literal withName:@"Literal"];
-        [self addRule:__NOT withName:@"NOT"];
-        [self addRule:__OPEN withName:@"OPEN"];
-        [self addRule:__OPTION withName:@"OPTION"];
-        [self addRule:__PLUS withName:@"PLUS"];
-        [self addRule:__PROPERTY withName:@"PROPERTY"];
-        [self addRule:__Prefix withName:@"Prefix"];
-        [self addRule:__Primary withName:@"Primary"];
-        [self addRule:__PropIdentifier withName:@"PropIdentifier"];
-        [self addRule:__PropParamaters withName:@"PropParamaters"];
-        [self addRule:__QUESTION withName:@"QUESTION"];
-        [self addRule:__Range withName:@"Range"];
-        [self addRule:__SLASH withName:@"SLASH"];
-        [self addRule:__STAR withName:@"STAR"];
-        [self addRule:__Sequence withName:@"Sequence"];
-        [self addRule:__Space withName:@"Space"];
-        [self addRule:__Spacing withName:@"Spacing"];
-        [self addRule:__Suffix withName:@"Suffix"];
-
-    }
-    
-    return self;
-}
-
-
-//==================================================================================================
-#pragma mark -
-#pragma mark Handling action results
-//==================================================================================================
-- (void)pushResult:(id)result
-{
-	[_actionResults addObject: result];
-}
-
-- (id)popResult
-{
-	id result = [_actionResults lastObject];
-	[_actionResults removeLastObject];
-	return result;
-}
-
-- (void)beginCollectingResults
-{
-	[_lastResultCollectionStart addObject: @(_actionResults.count -1)];
-}
-
-- (NSArray *)endCollectingResults
-{
-	NSInteger index = [_lastResultCollectionStart.lastObject integerValue];
-	[_lastResultCollectionStart removeLastObject];
-	
-	NSArray *subarray = [_actionResults subarrayWithRange: NSMakeRange(index, _actionResults.count)];
-	[_actionResults removeObjectsInRange: NSMakeRange(index, _actionResults.count)];
-	
-	return subarray;
-}
-
-
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
-
-- (void) addRule:(PEGParserRule)rule withName:(NSString *)name
-{
-    NSMutableArray *rules = [_rules objectForKey:name];
-    if (!rules)
-    {
-        rules = [NSMutableArray new];
-        [_rules setObject:rules forKey:name];
-    }
-    
-    [rules addObject:rule];
-}
-
-- (BOOL) parseString:(NSString *)string
+- (BOOL)parseString:(NSString *)string
 {
     _string = [string copy];
 #ifndef __PEG_PARSER_CASE_INSENSITIVE__

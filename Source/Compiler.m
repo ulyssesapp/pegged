@@ -103,7 +103,7 @@
 	NSMutableString *header = [self getTemplateWithName: "HDRTEMP"];
 
 	[header replaceOccurrencesOfString:@"//!$" withString:@"$" options:0 range:NSMakeRange(0, header.length)];
-	[header replaceOccurrencesOfString:@"$ParserClass" withString:self.className options:0 range:NSMakeRange(0, header.length)];
+	[header replaceOccurrencesOfString:@"ParserClass" withString:self.className options:0 range:NSMakeRange(0, header.length)];
 	[header replaceOccurrencesOfString:@"$Version" withString:[NSString stringWithFormat: @"%lu.%lu.%lu", PEGGED_VERSION_MAJOR, PEGGED_VERSION_MINOR, PEGGED_VERSION_CHANGE] options:0 range:NSMakeRange(0, header.length)];
 	[header replaceOccurrencesOfString:@"$OtherClasses" withString:classes options:0 range:NSMakeRange(0, header.length)];
 	[header replaceOccurrencesOfString:@"$Properties" withString:properties options:0 range:NSMakeRange(0, header.length)];
@@ -152,8 +152,8 @@
 	NSMutableString *source = [self getTemplateWithName: "SRCTEMP"];
 	
 	[source replaceOccurrencesOfString:@"//!$" withString:@"$" options:0 range:NSMakeRange(0, source.length)];
-	[source replaceOccurrencesOfString:@"Parser.h" withString:@"$ParserClass.h" options:0 range:NSMakeRange(0, source.length)];
-	[source replaceOccurrencesOfString:@"$ParserClass" withString:self.className options:0 range:NSMakeRange(0, source.length)];
+	[source replaceOccurrencesOfString:@"Parser.h" withString:@"ParserClass.h" options:0 range:NSMakeRange(0, source.length)];
+	[source replaceOccurrencesOfString:@"ParserClass" withString:self.className options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"$Version" withString:[NSString stringWithFormat: @"%lu.%lu.%lu", PEGGED_VERSION_MAJOR, PEGGED_VERSION_MINOR, PEGGED_VERSION_CHANGE] options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"$Imports" withString:imports options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"$ParserDefinitions" withString:definitions options:0 range:NSMakeRange(0, source.length)];
