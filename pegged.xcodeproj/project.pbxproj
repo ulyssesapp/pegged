@@ -22,6 +22,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		7988067D177C94D70003B729 /* Parser.m in Sources */ = {isa = PBXBuildFile; fileRef = 7988067C177C94D70003B729 /* Parser.m */; };
 		8DD76F9A0486AA7600D96B5E /* pegged.m in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* pegged.m */; settings = {ATTRIBUTES = (); }; };
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
 		8DD76F9F0486AA7600D96B5E /* pegged.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6859EA3029092ED04C91782 /* pegged.1 */; };
@@ -127,6 +128,8 @@
 		08FB7796FE84155DC02AAC07 /* pegged.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = pegged.m; sourceTree = "<group>"; };
 		08FB779EFE84155DC02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32A70AAB03705E1F00C91783 /* pegged_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pegged_Prefix.pch; sourceTree = "<group>"; };
+		7988067B177C94D70003B729 /* Parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Parser.h; sourceTree = "<group>"; };
+		7988067C177C94D70003B729 /* Parser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Parser.m; sourceTree = "<group>"; };
 		8DD76FA10486AA7600D96B5E /* pegged */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pegged; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE3FF57710EDF8000020AEB9 /* Subrule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Subrule.h; sourceTree = "<group>"; };
 		BE3FF57810EDF8000020AEB9 /* Subrule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Subrule.m; sourceTree = "<group>"; };
@@ -221,6 +224,7 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				7988067A177C94C50003B729 /* Template */,
 				BEDCAA2610F82C46003C0737 /* Condition.h */,
 				BEDCAA2710F82C46003C0737 /* Condition.m */,
 				BE3FF7D810EEFF540020AEB9 /* LookAhead.h */,
@@ -280,6 +284,15 @@
 				BE94313A10F8315100FA4E0A /* EvenStrings */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7988067A177C94C50003B729 /* Template */ = {
+			isa = PBXGroup;
+			children = (
+				7988067B177C94D70003B729 /* Parser.h */,
+				7988067C177C94D70003B729 /* Parser.m */,
+			);
+			path = Template;
 			sourceTree = "<group>";
 		};
 		BE3FF91210F0E9EA0020AEB9 /* Tests */ = {
@@ -460,6 +473,7 @@
 				BEDCAA2810F82C46003C0737 /* Condition.m in Sources */,
 				BE9431E310F919F400FA4E0A /* Version.m in Sources */,
 				BE94329B10FA6A0500FA4E0A /* Property.m in Sources */,
+				7988067D177C94D70003B729 /* Parser.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -521,6 +535,17 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Source/pegged_Prefix.pch;
 				INSTALL_PATH = /usr/local/bin;
+				LD_NO_PIE = YES;
+				OTHER_LDFLAGS = (
+					"-sectcreate",
+					__DATA,
+					HDRTEMP,
+					Source/Template/Parser.h,
+					"-sectcreate",
+					__DATA,
+					SRCTEMP,
+					Source/Template/Parser.m,
+				);
 				PRODUCT_NAME = pegged;
 			};
 			name = Debug;
@@ -532,10 +557,22 @@
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_ENABLE_OBJC_ARC = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_MODEL_TUNING = G5;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Source/pegged_Prefix.pch;
 				INSTALL_PATH = /usr/local/bin;
+				LD_NO_PIE = YES;
+				OTHER_LDFLAGS = (
+					"-sectcreate",
+					__DATA,
+					HDRTEMP,
+					Source/Template/Parser.h,
+					"-sectcreate",
+					__DATA,
+					SRCTEMP,
+					Source/Template/Parser.m,
+				);
 				PRODUCT_NAME = pegged;
 			};
 			name = Release;
