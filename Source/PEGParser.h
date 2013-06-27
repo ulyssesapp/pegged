@@ -17,24 +17,9 @@ typedef BOOL (^PEGParserRule)(PEGParser *parser);
 typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 
 @interface PEGParser : NSObject
-{
-	PEGParserDataSource *_dataSource;
-	NSString *_string;
-	const char *cstring;
-	NSUInteger _index;
-	NSUInteger _limit;
-	NSMutableDictionary *_rules;
-	
-	BOOL _capturing;
-	NSUInteger yybegin;
-	NSUInteger yyend;
-	NSMutableArray *_captures;
-	
-	NSMutableArray *_actionResults;
-	NSMutableArray *_lastResultCollectionStart;
-}
 
 @property (strong) PEGParserDataSource *dataSource;
+
 
 @property (readonly) NSUInteger captureStart;
 @property (readonly) NSUInteger captureEnd;
@@ -42,29 +27,8 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 @property (strong) Compiler *compiler;
 
 
-- (void) addRule:(PEGParserRule)rule withName:(NSString *)name;
-
-- (void) beginCapture;
-- (void) endCapture;
-- (void) performAction:(PEGParserAction)action;
-
-- (BOOL) lookAhead:(PEGParserRule)rule;
-- (BOOL) invert:(PEGParserRule)rule;
-- (BOOL) matchRule:(NSString *)ruleName;
-- (BOOL) matchOne:(PEGParserRule)rule;
-- (BOOL) matchMany:(PEGParserRule)rule;
-- (BOOL) matchDot;
-- (BOOL) matchString:(char *)s;
-- (BOOL) matchClass:(unsigned char *)bits;
-
 - (BOOL) parse;
 - (BOOL) parseString:(NSString *)string;
-
-- (void) pushResult:(id)match;
-- (id) popResult;
-
-- (void) beginCollectingResults;
-- (NSArray *) endCollectingResults;
 
 @end
 

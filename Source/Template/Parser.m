@@ -8,27 +8,64 @@
 //!$Imports
 
 @interface $ParserClassCapture : NSObject
-{
-    NSUInteger _begin;
-    NSUInteger _end;
-    $ParserClassAction _action;
-}
+
 @property (assign) NSUInteger begin;
 @property (assign) NSUInteger end;
 @property (copy) $ParserClassAction action;
+
 @end
 
 @implementation $ParserClassCapture
-@synthesize begin = _begin;
-@synthesize end = _end;
-@synthesize action = _action;
+@end
+
+
+@interface $ParserClass ()
+{
+	$ParserClassDataSource *_dataSource;
+	NSString *_string;
+	const char *cstring;
+	NSUInteger _index;
+	NSUInteger _limit;
+	NSMutableDictionary *_rules;
+	
+	BOOL _capturing;
+	NSUInteger yybegin;
+	NSUInteger yyend;
+	NSMutableArray *_captures;
+	
+	NSMutableArray *_actionResults;
+	NSMutableArray *_lastResultCollectionStart;
+}
+
+// Actions
+- (void) beginCapture;
+- (void) endCapture;
+- (void) performAction:($ParserClassAction)action;
+
+// Handling action results
+- (void) pushResult:(id)match;
+- (id) popResult;
+
+- (void) beginCollectingResults;
+- (NSArray *) endCollectingResults;
+
+
+// Matching operations
+- (void) addRule:($ParserClassRule)rule withName:(NSString *)name;
+
+- (BOOL) lookAhead:($ParserClassRule)rule;
+- (BOOL) invert:($ParserClassRule)rule;
+- (BOOL) matchRule:(NSString *)ruleName;
+- (BOOL) matchOne:($ParserClassRule)rule;
+- (BOOL) matchMany:($ParserClassRule)rule;
+- (BOOL) matchDot;
+- (BOOL) matchString:(char *)s;
+- (BOOL) matchClass:(unsigned char *)bits;
 
 @end
 
 
 @implementation $ParserClass
-
-@synthesize dataSource = _dataSource;
 
 @synthesize captureStart = yybegin;
 @synthesize captureEnd = yyend;

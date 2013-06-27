@@ -16,53 +16,17 @@ typedef BOOL (^$ParserClassRule)($ParserClass *parser);
 typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
 
 @interface $ParserClass : NSObject
-{
-	$ParserClassDataSource *_dataSource;
-	NSString *_string;
-	const char *cstring;
-	NSUInteger _index;
-	NSUInteger _limit;
-	NSMutableDictionary *_rules;
-	
-	BOOL _capturing;
-	NSUInteger yybegin;
-	NSUInteger yyend;
-	NSMutableArray *_captures;
-	
-	NSMutableArray *_actionResults;
-	NSMutableArray *_lastResultCollectionStart;
-}
 
 @property (strong) $ParserClassDataSource *dataSource;
+
 
 @property (readonly) NSUInteger captureStart;
 @property (readonly) NSUInteger captureEnd;
 @property (readonly) NSString* string;
 //!$Properties
 
-- (void) addRule:($ParserClassRule)rule withName:(NSString *)name;
-
-- (void) beginCapture;
-- (void) endCapture;
-- (void) performAction:($ParserClassAction)action;
-
-- (BOOL) lookAhead:($ParserClassRule)rule;
-- (BOOL) invert:($ParserClassRule)rule;
-- (BOOL) matchRule:(NSString *)ruleName;
-- (BOOL) matchOne:($ParserClassRule)rule;
-- (BOOL) matchMany:($ParserClassRule)rule;
-- (BOOL) matchDot;
-- (BOOL) matchString:(char *)s;
-- (BOOL) matchClass:(unsigned char *)bits;
-
 - (BOOL) parse;
 - (BOOL) parseString:(NSString *)string;
-
-- (void) pushResult:(id)match;
-- (id) popResult;
-
-- (void) beginCollectingResults;
-- (NSArray *) endCollectingResults;
 
 @end
 

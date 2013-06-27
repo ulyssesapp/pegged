@@ -9,27 +9,64 @@
 
 
 @interface PEGParserCapture : NSObject
-{
-    NSUInteger _begin;
-    NSUInteger _end;
-    PEGParserAction _action;
-}
+
 @property (assign) NSUInteger begin;
 @property (assign) NSUInteger end;
 @property (copy) PEGParserAction action;
+
 @end
 
 @implementation PEGParserCapture
-@synthesize begin = _begin;
-@synthesize end = _end;
-@synthesize action = _action;
+@end
+
+
+@interface PEGParser ()
+{
+	PEGParserDataSource *_dataSource;
+	NSString *_string;
+	const char *cstring;
+	NSUInteger _index;
+	NSUInteger _limit;
+	NSMutableDictionary *_rules;
+	
+	BOOL _capturing;
+	NSUInteger yybegin;
+	NSUInteger yyend;
+	NSMutableArray *_captures;
+	
+	NSMutableArray *_actionResults;
+	NSMutableArray *_lastResultCollectionStart;
+}
+
+// Actions
+- (void) beginCapture;
+- (void) endCapture;
+- (void) performAction:(PEGParserAction)action;
+
+// Handling action results
+- (void) pushResult:(id)match;
+- (id) popResult;
+
+- (void) beginCollectingResults;
+- (NSArray *) endCollectingResults;
+
+
+// Matching operations
+- (void) addRule:(PEGParserRule)rule withName:(NSString *)name;
+
+- (BOOL) lookAhead:(PEGParserRule)rule;
+- (BOOL) invert:(PEGParserRule)rule;
+- (BOOL) matchRule:(NSString *)ruleName;
+- (BOOL) matchOne:(PEGParserRule)rule;
+- (BOOL) matchMany:(PEGParserRule)rule;
+- (BOOL) matchDot;
+- (BOOL) matchString:(char *)s;
+- (BOOL) matchClass:(unsigned char *)bits;
 
 @end
 
 
 @implementation PEGParser
-
-@synthesize dataSource = _dataSource;
 
 @synthesize captureStart = yybegin;
 @synthesize captureEnd = yyend;
