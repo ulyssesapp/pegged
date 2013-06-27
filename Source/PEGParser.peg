@@ -9,7 +9,7 @@
 # [2] http://piumarta.com/software/peg/
 # 
 
-@property (retain) Compiler *compiler;
+@property (strong) Compiler *compiler;
 
 # Hierarchical syntax
 Grammar <- Spacing Declaration* Spacing Definition+ EndOfFile

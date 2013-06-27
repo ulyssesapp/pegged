@@ -168,7 +168,7 @@
 		BECEF81810DB3CA50067BA1E /* PEGParser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PEGParser.m; sourceTree = "<group>"; };
 		BECEF82410DC1F4F0067BA1E /* Compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Compiler.h; sourceTree = "<group>"; };
 		BECEF82510DC1F4F0067BA1E /* Compiler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Compiler.m; sourceTree = "<group>"; };
-		BECEF83510DC4EF00067BA1E /* PEGParser.peg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = PEGParser.peg; sourceTree = "<group>"; };
+		BECEF83510DC4EF00067BA1E /* PEGParser.peg */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.objc; fileEncoding = 4; path = PEGParser.peg; sourceTree = "<group>"; };
 		BEDCA7C510F145CE003C0737 /* equations.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = equations.txt; sourceTree = "<group>"; };
 		BEDCAA0A10F82865003C0737 /* EvenParser.peg */ = {isa = PBXFileReference; explicitFileType = sourcecode; fileEncoding = 4; path = EvenParser.peg; sourceTree = "<group>"; };
 		BEDCAA2010F8291A003C0737 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };

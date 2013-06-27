@@ -419,7 +419,7 @@ typedef void (^%@Action)(%@ *self, NSString *text);\n\
 %@\
 }\n\
 \n\
-@property (retain) %@DataSource *dataSource;\n\
+@property (strong) %@DataSource *dataSource;\n\
 \n\
 @property (readonly) NSUInteger captureStart;\n\
 @property (readonly) NSUInteger captureEnd;\n\
