@@ -15,7 +15,7 @@
     Node *_node;
 }
 
-@property (retain) Node *node;
+@property (strong) Node *node;
 
 + (id) lookAheadWithNode:(Node *)node;
 - (id) initWithNode:(Node *)node;

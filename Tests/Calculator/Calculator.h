@@ -17,7 +17,7 @@
     BOOL _negative;
 }
 
-@property (readonly) NSNumber *result;
+@property (weak, readonly) NSNumber *result;
 
 - (void) add;
 - (void) divide;

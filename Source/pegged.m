@@ -28,8 +28,6 @@ static struct option longopts[] = {
 
 int main (int argc, char *argv[])
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    
     NSString *outputDir;
     int ch;
     while ((ch = getopt_long(argc, argv, "d:", longopts, NULL)) != -1)
@@ -84,7 +82,6 @@ int main (int argc, char *argv[])
     PEGParser *parser   = [PEGParser new];
     parser.compiler = compiler;
     BOOL retval = [parser parseString:string];
-    [parser release];
     if (retval)
     {
         NSString *fileWithoutExtension = [path stringByDeletingPathExtension];
@@ -101,8 +98,6 @@ int main (int argc, char *argv[])
         fprintf(stderr, "syntax error\n");
     }
 
-    [compiler release];
 
-    [pool drain];
     return !retval;
 }

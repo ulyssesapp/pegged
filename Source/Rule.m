@@ -20,25 +20,12 @@
 
 //==================================================================================================
 #pragma mark -
-#pragma mark NSObject Methods
-//==================================================================================================
-
-- (void) dealloc
-{
-    [_name release];
-    
-    [super dealloc];
-}
-
-
-//==================================================================================================
-#pragma mark -
 #pragma mark Public Methods
 //==================================================================================================
 
 + (id) ruleWithName:(NSString*)name
 {
-    return [[[[self class] alloc] initWithName:name] autorelease];
+    return [[[self class] alloc] initWithName:name];
 }
 
 

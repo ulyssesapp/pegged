@@ -20,7 +20,7 @@
 
 + (id) node
 {
-    return [[[self class] new] autorelease];
+    return [[self class] new];
 }
 
 

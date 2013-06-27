@@ -18,7 +18,7 @@
     BOOL _repeats;
 }
 
-@property (retain) Node *node;
+@property (strong) Node *node;
 
 @property (assign) BOOL optional;
 @property (assign) BOOL repeats;

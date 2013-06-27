@@ -58,20 +58,6 @@ const NSString *__sourceTemplate;
 }
 
 
-- (void) dealloc
-{
-    [_stack release];
-    [_rules release];
-    [_properties release];
-    
-    [_className release];
-    [_headerPath release];
-    [_sourcePath release];
-    
-    [super dealloc];
-}
-
-
 //==================================================================================================
 #pragma mark -
 #pragma mark Public Methods
@@ -150,15 +136,8 @@ const NSString *__sourceTemplate;
     }
         
     NSString *source = [NSString stringWithFormat:(NSString *)__sourceTemplate, PEGGED_VERSION_MAJOR, PEGGED_VERSION_MINOR, PEGGED_VERSION_CHANGE, self.className, imports, self.className, self.className, self.className, self.className, self.className, synthesizes, self.className, self.className, self.className, self.className, self.className, [self.className uppercaseString], self.className, self.className, self.className, self.className, definitions, _startRule.name, declarations, self.className];
-    [declarations release];
-    [definitions release];
     [source writeToFile:self.sourcePath atomically:NO encoding:NSUTF8StringEncoding error:&error];
     
-    [properties release];
-    [classes release];
-    [imports release];
-    [synthesizes release];
-    [variables release];
 }
 
 
@@ -172,7 +151,6 @@ const NSString *__sourceTemplate;
     Node *second = [_stack lastObject];
     [_stack removeLastObject];
     Node *first = [_stack lastObject];
-    [first retain];
     [_stack removeLastObject];
     
     Sequence *sequence = nil;
@@ -185,7 +163,6 @@ const NSString *__sourceTemplate;
     }
     [sequence append:second];
     [_stack addObject:sequence];
-    [first release];
 }
 
 
@@ -397,11 +374,7 @@ const NSString *__sourceTemplate;
     property.stars = _propertyStars;
     property.type = _propertyType;
     [_properties addObject:property];
-    [property release];
     
-    [_propertyParameters release];
-    [_propertyStars release];
-    [_propertyType release];
 }
 
 - (void) parsedExtraCode:(NSString*)code {
@@ -496,10 +469,6 @@ const NSString *__sourceTemplate = @"\
 #define __has_extension __has_feature // Compatibility with pre-3.0 compilers.\n\
 #endif\n\
 \n\
-#if __has_feature(objc_arc) && __clang_major__ >= 3\n\
-#define ARC_ENABLED 1\n\
-#endif // __has_feature(objc_arc)\n\
-\n\
 %@\
 \n\
 @interface %@Capture : NSObject\n\
@@ -517,13 +486,6 @@ const NSString *__sourceTemplate = @"\
 @synthesize begin = _begin;\n\
 @synthesize end = _end;\n\
 @synthesize action = _action;\n\
-#ifndef ARC_ENABLED\n\
-- (void) dealloc\n\
-{\n\
-    [_action release];\n\
-    [super dealloc];\n\
-}\n\
-#endif\n\
 \n\
 @end\n\
 \n\
@@ -564,12 +526,7 @@ const NSString *__sourceTemplate = @"\
     if (nextString)\n\
     {\n\
         nextString = [_string stringByAppendingString:nextString];\n\
-#ifdef ARC_ENABLED\n\
         _string = nextString;\n\
-#else\n\
-        [_string release];\n\
-        _string = [nextString retain];\n\
-#endif\n\
 #ifndef __PEG_PARSER_CASE_INSENSITIVE__\n\
         cstring = [_string UTF8String];\n\
 #else\n\
@@ -661,11 +618,7 @@ const NSString *__sourceTemplate = @"\
 \n\
 - (BOOL) matchString:(char *)s\n\
 {\n\
-#ifdef ARC_ENABLED\n\
     @autoreleasepool {\n\
-#else\n\
-    NSAutoreleasePool *pool = [NSAutoreleasePool new];\n\
-#endif\n\
 // %@\n\
     NSInteger saved = _index;\n\
     while (*s)\n\
@@ -673,9 +626,6 @@ const NSString *__sourceTemplate = @"\
         if (_index >= _limit && ![self _refill]) return NO;\n\
         if (cstring[_index] != *s)\n\
         {\n\
-#ifndef ARC_ENABLED\n\
-            [pool drain];\n\
-#endif\n\
             _index = saved;\n\
             yyprintf((stderr, \"  fail matchString '%%s'\", s));\n\
             return NO;\n\
@@ -683,11 +633,7 @@ const NSString *__sourceTemplate = @"\
         ++s;\n\
         ++_index;\n\
     }\n\
-#ifdef ARC_ENABLED\n\
   }\n\
-#else\n\
-    [pool drain];\n\
-#endif\n\
     yyprintf((stderr, \"  ok   matchString '%%s'\", s));\n\
     return YES;\n\
 }\n\
@@ -713,9 +659,6 @@ const NSString *__sourceTemplate = @"\
     capture.end    = yyend;\n\
     capture.action = action;\n\
     [_captures addObject:capture];\n\
-#ifndef ARC_ENABLED\n\
-    [capture release];\n\
-#endif\n\
 }\n\
 \n\
 - (NSString *) yyText:(NSUInteger)begin to:(NSUInteger)end\n\
@@ -737,12 +680,7 @@ const NSString *__sourceTemplate = @"\
 - (void) yyCommit\n\
 {\n\
     NSString *newString = [_string substringFromIndex:_index];\n\
-#ifdef ARC_ENABLED\n\
     _string = newString;\n\
-#else\n\
-    [_string release];\n\
-    _string = [newString retain];\n\
-#endif\n\
 #ifndef __PEG_PARSER_CASE_INSENSITIVE__\n\
     cstring = [_string UTF8String];\n\
 #else\n\
@@ -777,9 +715,6 @@ const NSString *__sourceTemplate = @"\
         [self yyDone];\n\
     [self yyCommit];\n\
     \n\
-#ifndef ARC_ENABLED\n\
-    [_string release];\n\
-#endif\n\
     _string = nil;\n\
     cstring = nil;\n\
     \n\
@@ -807,18 +742,6 @@ const NSString *__sourceTemplate = @"\
 }\n\
 \n\
 \n\
-#ifndef ARC_ENABLED\n\
-- (void) dealloc\n\
-{\n\
-    [_string release];\n\
-    [_rules release];\n\
-    [_captures release];\n\
-\n\
-    [super dealloc];\n\
-}\n\
-#endif\n\
-\n\
-\n\
 //==================================================================================================\n\
 #pragma mark -\n\
 #pragma mark Public Methods\n\
@@ -831,9 +754,6 @@ const NSString *__sourceTemplate = @"\
     {\n\
         rules = [NSMutableArray new];\n\
         [_rules setObject:rules forKey:name];\n\
-#ifndef ARC_ENABLED\n\
-        [rules release];\n\
-#endif\n\
     }\n\
     \n\
     [rules addObject:rule];\n\
@@ -859,9 +779,6 @@ const NSString *__sourceTemplate = @"\
     _limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];\n\
     _index  = 0;\n\
     BOOL retval = [self _parse];\n\
-#ifndef ARC_ENABLED\n\
-    [_string release];\n\
-#endif\n\
     _string = nil;\n\
     cstring = nil;\n\
     return retval;\n\

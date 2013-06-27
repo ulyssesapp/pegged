@@ -16,18 +16,6 @@
 
 //==================================================================================================
 #pragma mark -
-#pragma mark NSObject Methods
-//==================================================================================================
-
-- (void) dealloc
-{
-    [_node release];
-    
-    [super dealloc];
-}
-
-//==================================================================================================
-#pragma mark -
 #pragma mark Node Methods
 //==================================================================================================
 
@@ -51,7 +39,7 @@
 
 + (id) lookAheadWithNode:(Node *)node
 {
-    return [[[[self class] alloc] initWithNode:node] autorelease];
+    return [[[self class] alloc] initWithNode:node];
 }
 
 
@@ -61,7 +49,7 @@
     
     if (self)
     {
-        _node = [node retain];
+        _node = node;
     }
     
     return self;

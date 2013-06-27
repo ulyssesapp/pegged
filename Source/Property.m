@@ -36,18 +36,6 @@
     return self;
 }
 
-
-- (void) dealloc
-{
-    [_name release];
-    [_parameters release];
-    [_stars release];
-    [_type release];
-    
-    [super dealloc];
-}
-
-
 //==================================================================================================
 #pragma mark -
 #pragma mark Private Methods

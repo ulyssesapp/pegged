@@ -16,19 +16,6 @@
 
 //==================================================================================================
 #pragma mark -
-#pragma mark NSObject Methods
-//==================================================================================================
-
-- (void) dealloc
-{
-    [_rule release];
-    
-    [super dealloc];
-}
-
-
-//==================================================================================================
-#pragma mark -
 #pragma mark Terminal Methods
 //==================================================================================================
 
@@ -45,7 +32,7 @@
 
 + (id) subruleWithRule:(Rule *)rule
 {
-    return [[[[self class] alloc] initWithRule:rule] autorelease];
+    return [[[self class] alloc] initWithRule:rule];
 }
 
 
@@ -55,7 +42,7 @@
     
     if (self)
     {
-        _rule = [rule retain];
+        _rule = rule;
     }
     
     return self;

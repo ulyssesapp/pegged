@@ -15,37 +15,36 @@ int main(int argc, const char * argv[])
     if (argc != 2)
         return 1;
     
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
     
-    NSError *error = nil;
-    NSString *file     = [NSString stringWithUTF8String:argv[1]];
-    NSString *contents = [[NSString alloc] initWithContentsOfFile: file
-                                                         encoding: NSUTF8StringEncoding
-                                                            error: &error];
-    
-    BOOL hadError = NO;
-    NSUInteger line = 1;
-    for (NSString *string in [contents componentsSeparatedByString:@"\n"])
-    {
-        BOOL shouldParse = [string characterAtIndex:0] != '!';
-        if (!shouldParse)
-            string = [string substringFromIndex:1];
+        NSError *error = nil;
+        NSString *file     = [NSString stringWithUTF8String:argv[1]];
+        NSString *contents = [[NSString alloc] initWithContentsOfFile: file
+                                                             encoding: NSUTF8StringEncoding
+                                                                error: &error];
         
-        EvenParser *parser = [EvenParser new];
-        BOOL retval = [parser parseString:string];
-        [parser release];
-        
-        if (retval != shouldParse)
+        BOOL hadError = NO;
+        NSUInteger line = 1;
+        for (__strong NSString *string in [contents componentsSeparatedByString:@"\n"])
         {
-            NSString *output = [NSString stringWithFormat:@"%@:%u: error: '%@' %@\n", file, line, string, shouldParse ? @"didn't parse" : @"parsed"];
-            fprintf(stderr, "%s", [output UTF8String]);
-            hadError = YES;
+            BOOL shouldParse = [string characterAtIndex:0] != '!';
+            if (!shouldParse)
+                string = [string substringFromIndex:1];
+            
+            EvenParser *parser = [EvenParser new];
+            BOOL retval = [parser parseString:string];
+            
+            if (retval != shouldParse)
+            {
+                NSString *output = [NSString stringWithFormat:@"%@:%lu: error: '%@' %@\n", file, line, string, shouldParse ? @"didn't parse" : @"parsed"];
+                fprintf(stderr, "%s", [output UTF8String]);
+                hadError = YES;
+            }
+            
+            line++;
         }
         
-        line++;
+        
+        return hadError;
     }
-    
-    [pool drain];
-    
-    return hadError;
 }

@@ -17,7 +17,7 @@
     Rule *_rule;
 }
 
-@property (retain) Rule *rule;
+@property (strong) Rule *rule;
 
 + (id) subruleWithRule:(Rule *)rule;
 - (id) initWithRule:(Rule *)rule;

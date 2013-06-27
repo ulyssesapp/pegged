@@ -22,7 +22,7 @@
 @property (readonly) BOOL defined;
 @property (assign) BOOL used;
 
-@property (retain) Node *definition;
+@property (strong) Node *definition;
 
 + (id) ruleWithName:(NSString*)name;
 - (id) initWithName:(NSString*)name;

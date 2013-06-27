@@ -31,15 +31,6 @@
     return self;
 }
 
-
-- (void) dealloc
-{
-    [_nodes release];
-    
-    [super dealloc];
-}
-
-
 //==================================================================================================
 #pragma mark -
 #pragma mark Node Methods
