@@ -8,4 +8,4 @@
 
 const NSUInteger PEGGED_VERSION_MAJOR  = 0;
 const NSUInteger PEGGED_VERSION_MINOR  = 4;
-const NSUInteger PEGGED_VERSION_CHANGE = 0;
+const NSUInteger PEGGED_VERSION_CHANGE = 1;
