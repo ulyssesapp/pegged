@@ -35,8 +35,8 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
  */
 @interface PEGParserCapture : NSObject
 
-@property (assign) NSUInteger begin;
-@property (assign) NSUInteger end;
+@property NSUInteger begin;
+@property NSUInteger end;
 @property (copy) PEGParserAction action;
 
 @end
@@ -153,17 +153,22 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 - (BOOL)lookAhead:(PEGParserRule)rule
 {
     NSUInteger index=_index;
+
     BOOL capturing = _capturing;
     _capturing = NO;
+	
     BOOL matched = rule(self);
     _capturing = capturing;
     _index=index;
+	
     return matched;
 }
 
 - (BOOL)matchDot
 {
-    if (_index >= _limit) return NO;
+    if (_index >= _limit)
+		return NO;
+	
     ++_index;
     return YES;
 }
@@ -171,55 +176,66 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 - (BOOL)matchOne:(PEGParserRule)rule
 {
     NSUInteger index=_index, captureCount=[_captures count];
+
+	// Try to match
     if (rule(self))
         return YES;
+	
+	// Restore old state
     _index=index;
-    if ([_captures count] > captureCount)
-    {
+	
+    if ([_captures count] > captureCount) {
         NSRange rangeToRemove = NSMakeRange(captureCount, [_captures count]-captureCount);
         [_captures removeObjectsInRange:rangeToRemove];
     }
+	
     return NO;
 }
 
 - (BOOL)matchMany:(PEGParserRule)rule
 {
+	// We need at least one match
     if (![self matchOne:rule])
         return NO;
+	
+	// Match others
     while ([self matchOne:rule])
-        ;
-    return YES;
+		;
+    
+	return YES;
 }
 
 - (BOOL)matchRule:(NSString *)ruleName
 {
     NSArray *rules = [_rules objectForKey:ruleName];
-    if (![rules count])
+    
+	if (![rules count])
         NSLog(@"Couldn't find rule name \"%@\".", ruleName);
 		
-		for (PEGParserRule rule in rules)
-			if ([self matchOne:rule])
-				return YES;
+	for (PEGParserRule rule in rules) {
+		if ([self matchOne:rule])
+			return YES;
+	}
+
     return NO;
 }
 
 - (BOOL)matchString:(char *)s
 {
-    @autoreleasepool {
-		NSInteger saved = _index;
-		while (*s)
+	NSInteger saved = _index;
+
+	while (*s) {
+		if (_index >= _limit) return NO;
+		if (cstring[_index] != *s)
 		{
-			if (_index >= _limit) return NO;
-			if (cstring[_index] != *s)
-			{
-				_index = saved;
-				yyprintf((stderr, "  fail matchString '%s'", s));
-				return NO;
-			}
-			++s;
-			++_index;
+			_index = saved;
+			yyprintf((stderr, "  fail matchString '%s'", s));
+			return NO;
 		}
+		++s;
+		++_index;
 	}
+
     yyprintf((stderr, "  ok   matchString '%s'", s));
     return YES;
 }
@@ -227,13 +243,15 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 - (BOOL)matchClass:(unsigned char *)bits
 {
     if (_index >= _limit) return NO;
+	
     int c = [_string characterAtIndex:_index];
-    if (bits[c >> 3] & (1 << (c & 7)))
-    {
+    
+	if (bits[c >> 3] & (1 << (c & 7))) {
         ++_index;
         yyprintf((stderr, "  ok   matchClass"));
         return YES;
     }
+	
     yyprintf((stderr, "  fail matchClass"));
     return NO;
 }
@@ -257,8 +275,7 @@ typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
 - (void)addRule:(PEGParserRule)rule withName:(NSString *)name
 {
     NSMutableArray *rules = [_rules objectForKey:name];
-    if (!rules)
-    {
+    if (!rules) {
         rules = [NSMutableArray new];
         [_rules setObject:rules forKey:name];
     }
@@ -856,71 +873,38 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     return [_string substringWithRange:NSMakeRange(begin, len)];
 }
 
-- (void)yyDone
-{
-    for (PEGParserCapture *capture in _captures)
-    {
-        capture.action(self, [self yyText:capture.begin to:capture.end]);
-    }
-}
-
-- (void)yyCommit
-{
-    NSString *newString = [_string substringFromIndex:_index];
-    _string = newString;
-#ifndef __PEG_PARSER_CASE_INSENSITIVE__
-    cstring = [_string UTF8String];
-#else
-    cstring = [[_string lowercaseString] UTF8String];
-#endif
-	
-    _limit -= _index;
-    _index = 0;
-	
-    yybegin -= _index;
-    yyend -= _index;
-    [_captures removeAllObjects];
-}
-
-- (BOOL)_parse
-{
-    if (!_string)
-    {
-        _string = [NSString new];
-        cstring = [_string UTF8String];
-        _limit = 0;
-        _index = 0;
-    }
-    yybegin= yyend= _index;
-    _capturing = YES;
-    
-    BOOL matched = [self matchRule:@"Grammar"];
-    
-    if (matched)
-        [self yyDone];
-    [self yyCommit];
-    
-    _string = nil;
-    cstring = nil;
-    
-    return matched;
-}
 
 - (BOOL)parseString:(NSString *)string
 {
-    _string = [string copy];
-#ifndef __PEG_PARSER_CASE_INSENSITIVE__
-    cstring = [_string UTF8String];
-#else
-    cstring = [[_string lowercaseString] UTF8String];
-#endif
-	
-    _limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	// Prepare parser input
+	_string = string;
+	#ifndef __PEG_PARSER_CASE_INSENSITIVE__
+		cstring = [_string UTF8String];
+	#else
+		cstring = [[_string lowercaseString] UTF8String];
+	#endif
+		
+    // Setup capturing limits
+	_limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
     _index  = 0;
-    BOOL retval = [self _parse];
+
+	yybegin= yyend= _index;
+    _capturing = YES;
+    
+	// Do string matching
+    BOOL matched = [self matchRule:@"Grammar"];
+    
+	// Process actions
+    if (matched) {
+		for (PEGParserCapture *capture in _captures) {
+			capture.action(self, [self yyText:capture.begin to:capture.end]);
+		}
+	}
+	
+    // Cleanup parser
     _string = nil;
     cstring = nil;
-    return retval;
+	return matched;
 }
 
 
