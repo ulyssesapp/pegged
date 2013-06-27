@@ -5,36 +5,21 @@
 
 #import <Foundation/Foundation.h>
 
-
 @class Compiler;
 
-@class PEGParser;
 
-
-@protocol PEGParserDataSource;
-typedef NSObject<PEGParserDataSource> PEGParserDataSource;
-typedef BOOL (^PEGParserRule)(PEGParser *parser);
-typedef void (^PEGParserAction)(PEGParser *self, NSString *text);
-
+/*!
+ @abstract The PEGParser public interface
+ */
 @interface PEGParser : NSObject
 
-@property (strong) PEGParserDataSource *dataSource;
-
-
-@property (readonly) NSUInteger captureStart;
-@property (readonly) NSUInteger captureEnd;
-@property (readonly) NSString* string;
 @property (strong) Compiler *compiler;
 
 
-- (BOOL) parse;
+/*!
+ @abstract Parses the given string.
+ @discussion Returns YES on match.
+ */
 - (BOOL) parseString:(NSString *)string;
-
-@end
-
-
-@protocol PEGParserDataSource
-
-- (NSString *) nextString;
 
 @end

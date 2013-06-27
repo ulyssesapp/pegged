@@ -7,6 +7,15 @@
 
 //!$Imports
 
+// A block implementing a certain parsing rule
+typedef BOOL (^$ParserClassRule)($ParserClass *parser);
+
+// A block implementing a certain parser action
+typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
+
+/*!
+ @abstract Internally used class for storing captured text results for actions.
+ */
 @interface $ParserClassCapture : NSObject
 
 @property (assign) NSUInteger begin;
@@ -19,9 +28,11 @@
 @end
 
 
+/*!
+ @abstract Internal parser methods
+ */
 @interface $ParserClass ()
 {
-	$ParserClassDataSource *_dataSource;
 	NSString *_string;
 	const char *cstring;
 	NSUInteger _index;
@@ -37,40 +48,42 @@
 	NSMutableArray *_lastResultCollectionStart;
 }
 
+// Parser state information
+@property (readonly) NSUInteger captureStart;
+@property (readonly) NSUInteger captureEnd;
+@property (readonly) NSString* string;
+
 // Actions
-- (void) beginCapture;
-- (void) endCapture;
-- (void) performAction:($ParserClassAction)action;
+- (void)beginCapture;
+- (void)endCapture;
+- (void)performAction:($ParserClassAction)action;
 
 // Handling action results
-- (void) pushResult:(id)match;
-- (id) popResult;
+- (void)pushResult:(id)match;
+- (id)popResult;
 
-- (void) beginCollectingResults;
-- (NSArray *) endCollectingResults;
+- (void)beginCollectingResults;
+- (NSArray *)endCollectingResults;
 
 
 // Matching operations
-- (void) addRule:($ParserClassRule)rule withName:(NSString *)name;
+- (void)addRule:($ParserClassRule)rule withName:(NSString *)name;
 
-- (BOOL) lookAhead:($ParserClassRule)rule;
-- (BOOL) invert:($ParserClassRule)rule;
-- (BOOL) matchRule:(NSString *)ruleName;
-- (BOOL) matchOne:($ParserClassRule)rule;
-- (BOOL) matchMany:($ParserClassRule)rule;
-- (BOOL) matchDot;
-- (BOOL) matchString:(char *)s;
-- (BOOL) matchClass:(unsigned char *)bits;
+- (BOOL)lookAhead:($ParserClassRule)rule;
+- (BOOL)invert:($ParserClassRule)rule;
+- (BOOL)matchRule:(NSString *)ruleName;
+- (BOOL)matchOne:($ParserClassRule)rule;
+- (BOOL)matchMany:($ParserClassRule)rule;
+- (BOOL)matchDot;
+- (BOOL)matchString:(char *)s;
+- (BOOL)matchClass:(unsigned char *)bits;
 
 @end
 
 
 @implementation $ParserClass
 
-@synthesize captureStart = yybegin;
-@synthesize captureEnd = yyend;
-@synthesize string = _string;
-
+@synthesize captureStart=yybegin, captureEnd=yyend, string=_string;
 
 //==================================================================================================
 #pragma mark -
@@ -89,29 +102,6 @@
 #define yydebug(args)
 #define yyprintf(args)
 #endif
-
-- (BOOL) _refill
-{
-    if (!self.dataSource)
-        return NO;
-	
-    NSString *nextString = [self.dataSource nextString];
-    if (nextString)
-    {
-        nextString = [_string stringByAppendingString:nextString];
-        _string = nextString;
-#ifndef __PEG_PARSER_CASE_INSENSITIVE__
-        cstring = [_string UTF8String];
-#else
-        cstring = [[_string lowercaseString] UTF8String];
-#endif
-		
-    }
-    _limit = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-    yyprintf((stderr, "refill"));
-    return YES;
-}
-
 
 - (void) beginCapture
 {
@@ -145,7 +135,7 @@
 
 - (BOOL) matchDot
 {
-    if (_index >= _limit && ![self _refill]) return NO;
+    if (_index >= _limit) return NO;
     ++_index;
     return YES;
 }
@@ -195,7 +185,7 @@
 		NSInteger saved = _index;
 		while (*s)
 		{
-			if (_index >= _limit && ![self _refill]) return NO;
+			if (_index >= _limit) return NO;
 			if (cstring[_index] != *s)
 			{
 				_index = saved;
@@ -212,7 +202,7 @@
 
 - (BOOL) matchClass:(unsigned char *)bits
 {
-    if (_index >= _limit && ![self _refill]) return NO;
+    if (_index >= _limit) return NO;
     int c = [_string characterAtIndex:_index];
     if (bits[c >> 3] & (1 << (c & 7)))
     {
@@ -368,14 +358,6 @@
     
     [rules addObject:rule];
 }
-
-
-- (BOOL) parse
-{
-    NSAssert(_dataSource != nil, @"can't call -parse without specifying a data source");
-    return [self _parse];
-}
-
 
 - (BOOL) parseString:(NSString *)string
 {

@@ -5,34 +5,19 @@
 
 #import <Foundation/Foundation.h>
 
-
 //!$OtherClasses
-@class $ParserClass;
 
-
-@protocol $ParserClassDataSource;
-typedef NSObject<$ParserClassDataSource> $ParserClassDataSource;
-typedef BOOL (^$ParserClassRule)($ParserClass *parser);
-typedef void (^$ParserClassAction)($ParserClass *self, NSString *text);
-
+/*!
+ @abstract The $ParserClass public interface
+ */
 @interface $ParserClass : NSObject
 
-@property (strong) $ParserClassDataSource *dataSource;
-
-
-@property (readonly) NSUInteger captureStart;
-@property (readonly) NSUInteger captureEnd;
-@property (readonly) NSString* string;
 //!$Properties
 
-- (BOOL) parse;
+/*!
+ @abstract Parses the given string.
+ @discussion Returns YES on match.
+ */
 - (BOOL) parseString:(NSString *)string;
-
-@end
-
-
-@protocol $ParserClassDataSource
-
-- (NSString *) nextString;
 
 @end
