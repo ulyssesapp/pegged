@@ -12,8 +12,8 @@
 #include <string.h>
 
 #ifdef matchDEBUG
-	#define yydebug(args)		{ fprintf args; }
-	#define yyprintf(args)		{ fprintf args; fprintf(stderr," @ %s",[[_string substringFromIndex:_index] UTF8String]); }
+	#define yydebug(...)		{ NSLog(__VA_ARGS__); }
+	#define yyprintf(args)		{ yydebug(__VA_ARGS__); NSLog(" at %i", _index)); }
 #else
 	#define yydebug(args)
 	#define yyprintf(args)
