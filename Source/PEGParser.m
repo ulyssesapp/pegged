@@ -14,7 +14,7 @@
 
 #ifdef matchDEBUG
 	#define yydebug(...)		{ NSLog(__VA_ARGS__); }
-	#define yyprintf(args)		{ yydebug(__VA_ARGS__); NSLog(" at %i", _index)); }
+	#define yyprintf(args)		{ yydebug(__VA_ARGS__); NSLog(" at %i", [self positionDescriptionForIndex: _index])); }
 #else
 	#define yydebug(args)
 	#define yyprintf(args)
@@ -921,6 +921,30 @@ static PEGParserRule __Suffix = ^(PEGParser *parser){
     _string = nil;
     cstring = nil;
     return retval;
+}
+
+
+#pragma mark - Helper methods
+
+- (NSInteger)lineNumberForIndex:(NSInteger)index
+{
+	__block NSInteger line = 0;
+	
+	[_string enumerateSubstringsInRange:NSMakeRange(0, index) options:NSStringEnumerationByLines|NSStringEnumerationSubstringNotRequired usingBlock:^(NSString *substring, NSRange substringRange, NSRange enclosingRange, BOOL *stop) {
+		line ++;
+	}];
+	
+	return line;
+}
+
+- (NSInteger)columnNumberForIndex:(NSInteger)index
+{
+	return index - [_string lineRangeForRange: NSMakeRange(index, 1)].location;
+}
+
+- (NSString *)positionDescriptionForIndex:(NSInteger)index
+{
+	return [NSString stringWithFormat: @"line: %li, column: %li", [self lineNumberForIndex: index], [self columnNumberForIndex: index]];
 }
 
 @end
