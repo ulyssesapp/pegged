@@ -7,6 +7,7 @@
 //
 
 #import "ASTNode.h"
+#import "NSString+PrettyPrinting.h"
 
 @implementation ASTNode
 
@@ -20,17 +21,20 @@
 	return node;
 }
 
-+ (id)astNodeWithName:(NSString *)name left:(ASTNode *)left operator:(NSString *)operator right:(ASTNode *)right
++ (id)astNodeWithName:(NSString *)name operator:(NSString *)operator children:(NSArray *)children
 {
 	ASTNode *node = [ASTNode new];
-	NSAssert(name && left && right && operator, @"Invalid arguments");
-	
 	node.name = name;
+	
 	node.operator = operator;
-	node.left = left;
-	node.right = right;
-
+	node.children = children;
+	
 	return node;
+}
+
++ (id)astNodeWithName:(NSString *)name operator:(NSString *)operator left:(ASTNode *)left right:(ASTNode *)right
+{
+	return [self astNodeWithName:name operator:operator children:@[left, right]];
 }
 
 - (NSInteger)evaluate
@@ -38,30 +42,36 @@
 	if (!self.operator)
 		return self.value;
 	
-	if ([self.operator isEqual: @"+"])
-		return self.left.evaluate + self.right.evaluate;
-	if ([self.operator isEqual: @"-"])
-		return self.left.evaluate - self.right.evaluate;
-	if ([self.operator isEqual: @"*"])
-		return self.left.evaluate * self.right.evaluate;
-	if ([self.operator isEqual: @"/"])
-		return self.left.evaluate / self.right.evaluate;
+	if (!self.children.count)
+		return 0;
 	
-	return 0;
+	NSInteger currentValue = [(ASTNode *)self.children[0] evaluate];
+	
+	for (NSInteger index = 1; index < self.children.count; index ++) {
+		if ([self.operator isEqual: @"+"])
+			currentValue += [(ASTNode *)self.children[index] evaluate];
+		if ([self.operator isEqual: @"-"])
+			currentValue -= [(ASTNode *)self.children[index] evaluate];
+		if ([self.operator isEqual: @"*"])
+			currentValue *= [(ASTNode *)self.children[index] evaluate];
+		if ([self.operator isEqual: @"/"])
+			currentValue /= [(ASTNode *)self.children[index] evaluate];
+	}
+	
+	return currentValue;
 }
 
 - (NSString *)description
 {
 	if (!self.operator)
 		return [NSString stringWithFormat: @"%li", self.value];
+
+	NSMutableArray *descriptions = [NSMutableArray new];
 	
-	NSString *left = self.left.description;
-	NSString *right = self.right.description;
+	for (ASTNode *node in self.children)
+		[descriptions addObject: [[node description] stringIndentedByCount: 1]];
 	
-	left = [left stringByReplacingOccurrencesOfString:@"(?m)^" withString:@"\t" options:NSRegularExpressionSearch range:NSMakeRange(0, left.length)];
-	right = [right stringByReplacingOccurrencesOfString:@"(?m)^" withString:@"\t" options:NSRegularExpressionSearch range:NSMakeRange(0, right.length)];	
-	
-	return [NSString stringWithFormat: @"%@ with %@:\n%@\n%@\n", self.name, self.operator, left, right];
+	return [NSString stringWithFormat: @"%@ with %@:\n%@", self.name, self.operator, [descriptions componentsJoinedByString: @"\n"]];
 }
 
 @end

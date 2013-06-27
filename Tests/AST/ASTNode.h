@@ -12,10 +12,11 @@
 @interface ASTNode : NSObject
 
 + (id)astNodeWithValue:(NSInteger)value;
-+ (id)astNodeWithName:(NSString *)name left:(ASTNode *)left operator:(NSString *)operator right:(ASTNode *)right;
++ (id)astNodeWithName:(NSString *)name operator:(NSString *)operator children:(NSArray *)children;
++ (id)astNodeWithName:(NSString *)name operator:(NSString *)operator left:(ASTNode *)left right:(ASTNode *)right;
 
 @property NSString *name, *operator;
-@property ASTNode *left, *right;
+@property NSArray *children;
 
 @property NSInteger value;
 

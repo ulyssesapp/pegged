@@ -41,7 +41,7 @@ int main (int argc, const char * argv[])
 
             if (!matched || (result.integerValue != node.evaluate))
             {
-                NSString *output = [NSString stringWithFormat:@"%@:%lu: error: %@!=%@ (== %@)\n", file, line, expression, result, node];
+                NSString *output = [NSString stringWithFormat:@"%@:%lu: error: %@!=%@ (== %@)\n", file, line, expression, result, node.description];
                 fprintf(stderr, "%s", [output UTF8String]);
                 hadError = YES;
             }
