@@ -21,7 +21,7 @@
 
 - (NSString *) condition
 {
-    return [NSString stringWithFormat:@"[parser matchRule:@\"%@\"]", self.rule.name];
+    return [NSString stringWithFormat:@"[parser matchRule: @\"%@\"]", self.rule.name];
 }
 
 - (NSString *)compileIfAccepted

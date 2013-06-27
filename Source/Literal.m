@@ -22,7 +22,7 @@
 - (NSString *) condition
 {
     NSString *string = self.caseInsensitive ? [self.string lowercaseString] : self.string;
-    return [NSString stringWithFormat:@"[parser matchString:\"%@\"]", string];
+    return [NSString stringWithFormat:@"[parser matchString: \"%@\"]", string];
 }
 
 

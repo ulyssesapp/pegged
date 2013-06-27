@@ -195,7 +195,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 
 - (BOOL)matchRule:(NSString *)ruleName
 {
-    NSArray *rules = [_rules objectForKey:ruleName];
+    NSArray *rules = [_rules objectForKey: ruleName];
     
 	if (![rules count])
         NSLog(@"Couldn't find rule name \"%@\".", ruleName);
@@ -342,7 +342,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     _capturing = YES;
     
 	// Do string matching
-    BOOL matched = [self matchRule:@"$StartRule"];
+    BOOL matched = [self matchRule: @"$StartRule"];
     
 	// Process actions
     if (matched) {
