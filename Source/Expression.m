@@ -42,10 +42,10 @@
     
     NSString *selector = self.inverted ? @"invert" : @"matchOne";
     
-    [code appendFormat:@"    if (![parser %@:^(%@ *parser){\n", selector, parserClassName];
+    [code appendFormat:@"    if (![parser %@WithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", selector, parserClassName];
     for (Node *node in self.nodes)
     {
-        [code appendFormat:@"    if ([parser matchOne:^(%@ *parser){\n", parserClassName];
+        [code appendFormat:@"    if ([parser matchOneWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
         [code appendString:[node compile:parserClassName]];
         [code appendString:@"    return YES;"];
         [code appendString:@"    }]) return YES;\n"];

@@ -36,7 +36,7 @@
         [code appendString:@"    if (!"];
     }
     
-    [code appendFormat:@"[parser %@:^(%@ *parser){\n", selector, parserClassName];
+    [code appendFormat:@"[parser %@WithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", selector, parserClassName];
     [code appendString:[self.node compile:parserClassName]];
     [code appendString:@"    return YES;"];
     [code appendString:@"    }]"];

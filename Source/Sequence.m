@@ -42,7 +42,7 @@
     
     if (self.inverted)
     {
-        [code appendFormat:@"    [parser invert:^(%@ *parser){\n", parserClassName];
+        [code appendFormat:@"    [parser invertWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
     }
     
     for (Node *node in self.nodes)

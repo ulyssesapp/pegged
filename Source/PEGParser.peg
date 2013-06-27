@@ -16,6 +16,7 @@ Grammar <- Spacing Declaration* Spacing Definition+ EndOfFile
 
 Declaration <- OPTION "case-insensitive" HorizSpace* EndOfDecl { self.compiler.caseInsensitive = YES; }
              / OPTION "match-debug" HorizSpace* EndOfDecl { self.compiler.matchDebug = YES; }
+			 / IMPORT ImportIdentifier HorizSpace* EndOfDecl { [self.compiler parsedImport:text]; }
              / PROPERTY (PropParamaters { [self.compiler parsedPropertyParameters:text]; })?
                         PropIdentifier           { [self.compiler parsedPropertyType:text]; }
                         < '*'* > HorizSpace*     { [self.compiler parsedPropertyStars:text]; }
@@ -37,14 +38,16 @@ Suffix     <- Primary ( QUESTION    { [self.compiler parsedQuestion]; }
                       / STAR        { [self.compiler parsedStar]; }
                       / PLUS        { [self.compiler parsedPlus]; }
                       )?
-Primary    <- Identifier !LEFTARROW { [self.compiler parsedIdentifier:text]; }
+Primary    <- Identifier !LEFTARROW { [self.compiler parsedIdentifier:text capturing:NO]; }
+			/ PERCENT Identifier !LEFTARROW	{ [self.compiler parsedIdentifier:text capturing:YES]; }
             / OPEN Expression CLOSE
             / Literal   { [self.compiler parsedLiteral:text]; }
             / Class     { [self.compiler parsedClass:text]; }
             / DOT       { [self.compiler parsedDot]; }
 
 Effect     <- Code      { [self.compiler parsedCode:text]; }
-            / Action    { [self.compiler parsedAction:text]; }
+			/ Action    { [self.compiler parsedAction:text returnValue:NO]; }
+			/ CIRCUMFLEX Action    { [self.compiler parsedAction:text returnValue:YES]; }
             / BEGIN     { [self.compiler beginCapture]; }
             / END       { [self.compiler endCapture]; }
 
@@ -73,6 +76,8 @@ PLUS       <- '+' Spacing
 OPEN       <- '(' Spacing
 CLOSE      <- ')' Spacing
 DOT        <- '.' Spacing
+CIRCUMFLEX <- '^' 
+PERCENT	   <- '%'
 
 Spacing    <- (Space / Comment)*
 Comment    <- '#' (!EndOfLine .)* EndOfLine
@@ -82,6 +87,7 @@ EndOfFile  <- !.
 
 OPTION     <- '@option' HorizSpace+
 PROPERTY   <- '@property' HorizSpace+
+IMPORT	   <- '@import' HorizSpace*
 BEGIN      <- '<' Spacing
 END        <- '>' Spacing
 
@@ -92,6 +98,10 @@ HorizSpace <- ' ' / '\t'
 # this isn't quite right yet, but it does what I need for the moment
 ExtraCode  <- '%%' < [^%]* > '%%' { [self.compiler parsedExtraCode: text]; }
 
+ImportIdentifier <- LocalImportIdentifier / GlobalImportIdentifier
+LocalImportIdentifier <- < '\"' ( !'\"' . )+ '\"' >
+GlobalImportIdentifier <- < '<' ( !'<' . )+ '>' >
+					
 PropIdentifier <- < IdentStart IdentCont* > HorizSpace*
 PropParamaters <- < '(' [^)]+ ')' > HorizSpace+
 EndOfDecl  <- ';' HorizSpace* (EndOfLine / Comment) 

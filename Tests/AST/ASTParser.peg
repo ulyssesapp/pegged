@@ -1,0 +1,21 @@
+@import "ASTNode.h";
+
+Equation					<- %Expression EndOfFile																	^{ return [self nextResult]; }
+
+Expression					<- _ AdditiveExpression _
+	
+AdditiveExpression			<- %MultiplicativeExpression (_ %AdditiveOperator _ %AdditiveExpression)?					^{ if (self.resultCount == 1) return [self nextResult]; return [ASTNode astNodeWithName:@"Additive" left:[self nextResult] operator:[self nextResult] right:[self nextResult]]; }
+							   
+
+MultiplicativeExpression	<- %PrimaryExpression (_ %MultiplicativeOperator _ %MultiplicativeExpression)?				^{ if (self.resultCount == 1) return [self nextResult]; return [ASTNode astNodeWithName:@"Multiplicative" left:[self nextResult] operator:[self nextResult] right:[self nextResult]]; }
+							   
+
+AdditiveOperator			<- (<'+'> / <'-'>)																			^{ return text; }
+MultiplicativeOperator		<- (<'*'> / <'/'>)																			^{ return text; }
+
+PrimaryExpression			<- NestedExpression / Number
+NestedExpression			<- _ '(' _ Expression _ ')' _
+Number						<- < [0-9]+ >																				^{ return [ASTNode astNodeWithValue: text.integerValue]; }
+
+_							<- ' '*
+EndOfFile					<- !.

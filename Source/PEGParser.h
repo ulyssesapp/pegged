@@ -17,10 +17,16 @@
 
 
 /*!
+ @abstract Parses the given string and passes the return value of the start rule as output argument.
+ @discussion Returns YES on match.
+ */
+- (BOOL)parseString:(NSString *)string usingResult:(id *)result;
+
+/*!
  @abstract Parses the given string.
  @discussion Returns YES on match.
  */
-- (BOOL) parseString:(NSString *)string;
+- (BOOL)parseString:(NSString *)string;
 
 @end
 
@@ -61,16 +67,21 @@
 /*!
  @abstract Accesses the next result of a sub-rule
  */
-- (void)nextResult;
+- (id)nextResult;
 
 /*!
  @abstract Accesses the result of a sub-rule with a certain index
  */
-- (void)resultAtIndex:(NSInteger)index;
+- (id)resultAtIndex:(NSInteger)index;
 
 /*!
  @abstract Provies all sub-rule results as array.
  */
 - (NSArray *)allResults;
+
+/*!
+ @abstract Provides the count of results.
+ */
+- (NSInteger)resultCount;
 
 @end

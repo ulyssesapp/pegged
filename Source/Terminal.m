@@ -24,6 +24,11 @@
     [code appendFormat:@"    if (%@%@) return NO;\n",
      self.inverted ? @"" : @"!", [self condition]];
     
+	NSString *acceptanceCode = self.compileIfAccepted;
+	
+	if (acceptanceCode)
+		[code appendFormat: @"    %@", self.compileIfAccepted];
+	
     return code;
 }
 
@@ -31,6 +36,11 @@
 - (NSString *) condition
 {
     return nil;
+}
+
+- (NSString *)compileIfAccepted
+{
+	return nil;
 }
 
 

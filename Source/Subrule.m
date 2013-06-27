@@ -24,25 +24,34 @@
     return [NSString stringWithFormat:@"[parser matchRule:@\"%@\"]", self.rule.name];
 }
 
+- (NSString *)compileIfAccepted
+{
+	if (_capturing)
+		return [NSString stringWithFormat:@"*localCaptures += 1;\n"];
+	else
+		return nil;
+}
+
 
 //==================================================================================================
 #pragma mark -
 #pragma mark Public Methods
 //==================================================================================================
 
-+ (id) subruleWithRule:(Rule *)rule
++ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing
 {
-    return [[[self class] alloc] initWithRule:rule];
+    return [[[self class] alloc] initWithRule:rule capturing:capturing];
 }
 
 
-- (id) initWithRule:(Rule *)rule
+- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing
 {
     self = [super init];
     
     if (self)
     {
         _rule = rule;
+		_capturing = capturing;
     }
     
     return self;

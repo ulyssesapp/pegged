@@ -16,4 +16,6 @@
 
 - (NSString *) condition;
 
+- (NSString *) compileIfAccepted;
+
 @end

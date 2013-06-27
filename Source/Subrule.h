@@ -15,11 +15,12 @@
 @interface Subrule : Terminal
 {
     Rule *_rule;
+	BOOL _capturing;
 }
 
 @property (strong) Rule *rule;
 
-+ (id) subruleWithRule:(Rule *)rule;
-- (id) initWithRule:(Rule *)rule;
++ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing;
+- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing;
 
 @end

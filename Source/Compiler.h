@@ -17,6 +17,7 @@
     Rule *_startRule;
     Rule *_currentRule;
     
+	NSMutableArray *_imports;
     NSMutableArray *_properties;
     NSString *_propertyParameters;
     NSString *_propertyStars;
@@ -47,12 +48,12 @@
 - (void) beginCapture;
 - (void) endCapture;
 
-- (void) parsedAction:(NSString *)code;
+- (void) parsedAction:(NSString *)code returnValue:(BOOL)returnValue;
 - (void) parsedAlternate;
 - (void) parsedClass:(NSString *)class;
 - (void) parsedCode:(NSString *)code;
 - (void) parsedDot;
-- (void) parsedIdentifier:(NSString *)identifier;
+- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing;
 - (void) parsedLiteral:(NSString *)literal;
 - (void) parsedLookAhead;
 - (void) parsedLookAhead:(NSString *)code;
@@ -63,6 +64,8 @@
 - (void) parsedRule;
 - (void) parsedStar;
 - (void) startRule:(NSString *)name;
+
+- (void) parsedImport:(NSString *)import;
 
 - (void) parsedPropertyParameters:(NSString *)parameters;
 - (void) parsedPropertyStars:(NSString *)stars;

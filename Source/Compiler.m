@@ -50,6 +50,7 @@
         _stack      = [NSMutableArray new];
         _rules      = [NSMutableDictionary new];
         _properties = [NSMutableArray new];
+		_imports	= [NSMutableArray new];
         _extraCode  = nil;
     }
     
@@ -94,11 +95,12 @@
     {
         [properties  appendString:[property property]];
         [classes     appendString:[property declaration]];
-        [imports     appendString:[property import]];
         [synthesizes appendString:[property synthesize]];
         [variables   appendString:[property variable]];
     }
-    
+
+	[imports	 appendString:[_imports componentsJoinedByString: @"\n"]];
+	
     // Generate the header
 	NSMutableString *header = [self getTemplateWithName: "HDRTEMP"];
 
@@ -144,13 +146,13 @@
         }
         
         [declarations appendFormat:@"        [self addRule:__%@ withName:@\"%@\"];\n", rule.name, rule.name];
-        [definitions appendFormat:@"static %@Rule __%@ = ^(%@ *parser){\n", self.className, rule.name, self.className];
+        [definitions appendFormat:@"static %@Rule __%@ = ^(%@ *parser, NSInteger *localCaptures){\n", self.className, rule.name, self.className];
         [definitions appendString:[rule compile:self.className]];
         [definitions appendFormat:@"};\n\n"];
     }
     
 	NSMutableString *source = [self getTemplateWithName: "SRCTEMP"];
-	
+	NSLog(@"%@ %@", imports, _imports);	
 	[source replaceOccurrencesOfString:@"//!$" withString:@"$" options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"Parser.h" withString:@"ParserClass.h" options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"ParserClass" withString:self.className options:0 range:NSMakeRange(0, source.length)];
@@ -201,9 +203,9 @@
 }
 
 
-- (void) parsedAction:(NSString *)code
+- (void) parsedAction:(NSString *)code returnValue:(BOOL)returnValue
 {
-    [_stack addObject:[Action actionWithCode:code]];
+    [_stack addObject:[Action actionWithCode:code returnValue:returnValue]];
 }
 
 
@@ -247,7 +249,7 @@
 }
 
 
-- (void) parsedIdentifier:(NSString *)identifier
+- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing
 {
     Rule *rule = [_rules objectForKey:identifier];
     if (!rule)
@@ -256,7 +258,7 @@
         [_rules setObject:rule forKey:identifier];
     }
     
-    [_stack addObject:[Subrule subruleWithRule:rule]];
+    [_stack addObject:[Subrule subruleWithRule:rule capturing:capturing]];
     rule.used = YES;
 }
 
@@ -370,6 +372,11 @@
     _currentRule = rule;
 }
 
+
+- (void)parsedImport:(NSString *)import
+{
+	[_imports addObject: [NSString stringWithFormat:@"#import %@", import]];
+}
 
 - (void) parsedPropertyParameters:(NSString *)parameters
 {

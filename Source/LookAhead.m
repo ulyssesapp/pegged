@@ -23,7 +23,7 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat:@"    if (![parser lookAhead:^(%@ *parser){\n", parserClassName];
+    [code appendFormat:@"    if (![parser lookAheadWithCaptures:localCaptures block:^(%@ *parser, NSInteger *localCaptures){\n", parserClassName];
     [code appendString:[self.node compile:parserClassName]];
     [code appendString:@"    return YES;"];
     [code appendFormat:@"    }]) return NO;\n"];

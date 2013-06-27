@@ -15,9 +15,10 @@
 @interface Action : Node
 {
     NSString *_code;
+	BOOL _hasReturnValue;
 }
 
-+ (id) actionWithCode:(NSString *)code;
-- (id) initWithCode:(NSString *)code;
++ (id) actionWithCode:(NSString *)code returnValue:(BOOL)returnValue;
+- (id) initWithCode:(NSString *)code returnValue:(BOOL)returnValue;
 
 @end
