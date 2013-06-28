@@ -11,38 +11,28 @@
 
 @implementation Literal
 
-@synthesize caseInsensitive = _caseInsensitive;
-@synthesize string = _string;
+#pragma mark - Terminal Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Terminal Methods
-//==================================================================================================
-
-- (NSString *) condition
+- (NSString *)condition
 {
     NSString *string = self.caseInsensitive ? [self.string lowercaseString] : self.string;
     return [NSString stringWithFormat:@"[parser matchString:\"%@\" startIndex:startIndex asserted:%@]", string, _asserted ? @"YES" : @"NO"];
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) literalWithString:(NSString *)string asserted:(BOOL)asserted
++ (id)literalWithString:(NSString *)string asserted:(BOOL)asserted
 {
     return [[[self class] alloc] initWithString:string asserted:asserted];
 }
 
 
-- (id) initWithString:(NSString *)string asserted:(BOOL)asserted
+- (id)initWithString:(NSString *)string asserted:(BOOL)asserted
 {
     self = [super init];
     
-    if (self)
-    {
+    if (self) {
         _string = [string copy];
 		_asserted = asserted;
     }

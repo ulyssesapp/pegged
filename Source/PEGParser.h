@@ -3,8 +3,6 @@
 //  Fork: https://github.com/hydrixos/pegged
 //
 
-#import <Foundation/Foundation.h>
-
 @class Compiler;
 
 
@@ -43,7 +41,7 @@ extern NSString *PEGParserErrorStringKey;
 
 
 /*!
- @abstract Methods available for parser actions
+ @abstract Methods available to parser actions
  */
 @interface PEGParser (ParserActionHelper)
 

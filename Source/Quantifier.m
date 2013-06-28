@@ -12,16 +12,9 @@
 
 @implementation Quantifier
 
-@synthesize node = _node;
-@synthesize optional = _optional;
-@synthesize repeats = _repeats;
+#pragma mark - Node Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Node Methods
-//==================================================================================================
-
-- (NSString *) compile:(NSString *)parserClassName
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
     
@@ -31,7 +24,7 @@
 		[code appendString:@"if (!"];
     
     [code appendFormat:@"[parser %@WithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", selector, parserClassName];
-    [code appendString:[[[self.node compile:parserClassName] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+    [code appendString:[[[self.node compile:parserClassName] stringByAddingIndentationWithCount: 1] stringByRemovingTrailingWhitespace]];
     [code appendString:@"\n\treturn YES;\n"];
     [code appendString:@"}]"];
     
@@ -48,18 +41,15 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) quantifierWithNode:(Node *)node
++ (id)quantifierWithNode:(Node *)node
 {
     return [[[self class] alloc] initWithNode:node];
 }
 
 
-- (id) initWithNode:(Node *)node
+- (id)initWithNode:(Node *)node
 {
     self = [super init];
     
@@ -70,6 +60,5 @@
     
     return self;
 }
-
 
 @end

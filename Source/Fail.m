@@ -10,12 +10,9 @@
 
 @implementation Fail
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Node Methods
-//==================================================================================================
+#pragma mark - Node Methods
 
-- (NSString *) compile:(NSString *)parserClassName
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
     
@@ -26,10 +23,7 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
 + (id)failWithMessage:(NSString *)message
 {

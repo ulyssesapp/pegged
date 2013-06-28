@@ -12,12 +12,9 @@
 
 @implementation Terminal
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-- (NSString *) compile:(NSString *)parserClassName
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
     
@@ -33,7 +30,7 @@
 }
 
 
-- (NSString *) condition
+- (NSString *)condition
 {
     return nil;
 }
@@ -42,6 +39,5 @@
 {
 	return nil;
 }
-
 
 @end

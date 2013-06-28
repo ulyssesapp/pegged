@@ -10,16 +10,18 @@
 
 #import "Compiler.h"
 
+@interface Expression ()
+{
+	NSMutableArray *_nodes;
+}
+
+@end
+
 @implementation Expression
 
-@synthesize nodes = _nodes;
+#pragma mark - Public Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
-
-- (id) init
+- (id)init
 {
     self = [super init];
     
@@ -31,25 +33,23 @@
     return self;
 }
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Node Methods
-//==================================================================================================
 
-- (NSString *) compile:(NSString *)parserClassName
+#pragma mark - Node Methods
+
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
-    
     NSString *selector = self.inverted ? @"invert" : @"matchOne";
     
     [code appendFormat:@"if (![parser %@WithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", selector, parserClassName];
-    for (Node *node in self.nodes)
-    {
+    
+	for (Node *node in self.nodes) {
         [code appendFormat:@"\tif ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", parserClassName];
-        [code appendString:[[[node compile:parserClassName] stringIndentedByCount: 2] stringByRemovingTrailingWhitespace]];
+        [code appendString:[[[node compile:parserClassName] stringByAddingIndentationWithCount: 2] stringByRemovingTrailingWhitespace]];
         [code appendString:@"\n\t\treturn YES;"];
         [code appendString:@"\n\t}])\n\t\treturn YES;\n\n"];
     }
+	
     [code appendString:@"\treturn NO;\n"];
     [code appendString:@"}])\n\treturn NO;\n\n"];
     
@@ -57,12 +57,9 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-- (void) addAlternative:(Node *)node
+- (void)addAlternative:(Node *)node
 {
     [_nodes addObject:node];
 }

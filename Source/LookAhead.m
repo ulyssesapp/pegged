@@ -12,19 +12,14 @@
 
 @implementation LookAhead
 
-@synthesize node = _node;
+#pragma mark - Node Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Node Methods
-//==================================================================================================
-
-- (NSString *) compile:(NSString *)parserClassName
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
     
     [code appendFormat:@"if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", parserClassName];
-    [code appendString:[[[self.node compile:parserClassName] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+    [code appendString:[[[self.node compile:parserClassName] stringByAddingIndentationWithCount: 1] stringByRemovingTrailingWhitespace]];
     [code appendString:@"\n\n\treturn YES;\n"];
     [code appendString:@"}])\n\treturn NO;\n"];
     
@@ -32,25 +27,20 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) lookAheadWithNode:(Node *)node
++ (id)lookAheadWithNode:(Node *)node
 {
     return [[[self class] alloc] initWithNode:node];
 }
 
 
-- (id) initWithNode:(Node *)node
+- (id)initWithNode:(Node *)node
 {
     self = [super init];
     
     if (self)
-    {
         _node = node;
-    }
     
     return self;
 }

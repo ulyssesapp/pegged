@@ -1,12 +1,10 @@
 //
-//  Calculator.h
+//  ASTNode.h
 //  pegged
 //
 //  Created by Friedrich Gräter.
 //  This code is in the public domain.
 //
-
-#import <Foundation/Foundation.h>
 
 @interface ASTNode : NSObject
 

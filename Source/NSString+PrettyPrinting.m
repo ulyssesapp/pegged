@@ -10,7 +10,7 @@
 
 @implementation NSString (PrettyPrinting)
 
-- (NSString *)stringIndentedByCount:(NSInteger)count
+- (NSString *)stringByAddingIndentationWithCount:(NSInteger)count
 {
 	static NSRegularExpression *expression;
 	expression = expression ?: [NSRegularExpression regularExpressionWithPattern:@"^" options:NSRegularExpressionAnchorsMatchLines error:NULL];

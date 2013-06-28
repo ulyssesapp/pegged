@@ -8,34 +8,25 @@
 
 #import "Code.h"
 
-
 @implementation Code
 
-@synthesize code = _code;
+#pragma mark - Node Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Node Methods
-//==================================================================================================
-
-- (NSString *) compile:(NSString *)failLabel
+- (NSString *)compile:(NSString *)failLabel
 {
     return [NSString stringWithFormat:@"%@;\n", self.code];
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) codeWithString:(NSString *)code
++ (id)codeWithString:(NSString *)code
 {
     return [[[self class] alloc] initWithString:code];
 }
 
 
-- (id) initWithString:(NSString *)code
+- (id)initWithString:(NSString *)code
 {
     self = [super init];
     

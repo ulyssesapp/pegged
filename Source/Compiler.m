@@ -29,19 +29,9 @@
 
 @implementation Compiler
 
-@synthesize caseInsensitive = _caseInsensitive;
+#pragma mark - NSObject Methods
 
-@synthesize className  = _className;
-@synthesize headerPath = _headerPath;
-@synthesize sourcePath = _sourcePath;
-@synthesize extraCode = _extraCode;
-
-//==================================================================================================
-#pragma mark -
-#pragma mark NSObject Methods
-//==================================================================================================
-
-- (id) init
+- (id)init
 {
     self = [super init];
     
@@ -58,12 +48,9 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (NSString *) unique:(NSString *)identifier
++ (NSString *)unique:(NSString *)identifier
 {
     static NSUInteger number = 0;
     return [NSString stringWithFormat:@"%@%lu", identifier, number++];
@@ -78,7 +65,7 @@
 	return template;
 }
 
-- (void) compile
+- (void)compile
 {
     NSAssert(self.className != nil,  @"no class name given");
     NSAssert(self.headerPath != nil, @"no path for header file");
@@ -120,18 +107,14 @@
     }
    
     if(self.extraCode) {
-        [definitions appendFormat: @"\n\
-//==================================================================================================\n\
-#pragma mark -\n\
+        [definitions appendFormat: @"\n\n\
 #pragma mark Extra Code\n\
-//==================================================================================================\n\
 \n\
 %@\n\
 \n", self.extraCode];
     }
     
-    for (NSString *name in [[_rules allKeys] sortedArrayUsingSelector:@selector(compare:)])
-    {
+    for (NSString *name in [[_rules allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
         Rule *rule = [_rules objectForKey:name];
         // Check if that the rule has been both used and defined
         if (rule.defined && !rule.used && rule != _startRule)
@@ -144,7 +127,7 @@
         
         [declarations appendFormat:@"\t\t[self addRule:__%@ withName:@\"%@\"];\n", rule.name, rule.name];
         [definitions appendFormat:@"static %@Rule __%@ = ^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", self.className, rule.name, self.className];
-        [definitions appendString:[[[rule compile:self.className] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+        [definitions appendString:[[[rule compile:self.className] stringByAddingIndentationWithCount: 1] stringByRemovingTrailingWhitespace]];
         [definitions appendFormat:@"\n};\n\n"];
     }
     
@@ -155,20 +138,17 @@
 	[source replaceOccurrencesOfString:@"ParserClass" withString:self.className options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"$Version" withString:[NSString stringWithFormat: @"%lu.%lu.%lu", PEGGED_VERSION_MAJOR, PEGGED_VERSION_MINOR, PEGGED_VERSION_CHANGE] options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"$Imports" withString:imports options:0 range:NSMakeRange(0, source.length)];
-	[source replaceOccurrencesOfString:@"$ParserDefinitions" withString:definitions options:0 range:NSMakeRange(0, source.length)];
+	[source replaceOccurrencesOfString:@"$ParserDefinitions" withString:[definitions stringByRemovingTrailingWhitespace] options:0 range:NSMakeRange(0, source.length)];
 	[source replaceOccurrencesOfString:@"$StartRule" withString:_startRule.name options:0 range:NSMakeRange(0, source.length)];
-	[source replaceOccurrencesOfString:@"$ParserDeclarations" withString:declarations options:0 range:NSMakeRange(0, source.length)];
+	[source replaceOccurrencesOfString:@"$ParserDeclarations" withString:[declarations stringByRemovingTrailingWhitespace] options:0 range:NSMakeRange(0, source.length) ];
 	
     [source writeToFile:self.sourcePath atomically:NO encoding:NSUTF8StringEncoding error:&error];
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Parser Actions
-//==================================================================================================
+#pragma mark - Parser Actions
 
-- (void) append
+- (void)append
 {
     Node *second = [_stack lastObject];
     [_stack removeLastObject];
@@ -188,19 +168,19 @@
 }
 
 
-- (void) beginCapture
+- (void)beginCapture
 {
     [_stack addObject:[Code codeWithString:@"[parser beginCapture]"]];
 }
 
 
-- (void) endCapture
+- (void)endCapture
 {
     [_stack addObject:[Code codeWithString:@"[parser endCapture]"]];
 }
 
 
-- (void) parsedAction:(NSString *)code returnValue:(BOOL)returnValue
+- (void)parsedAction:(NSString *)code returnValue:(BOOL)returnValue
 {
     [_stack addObject:[Action actionWithCode:code returnValue:returnValue]];
 }
@@ -210,7 +190,7 @@
 	[_stack addObject:[Fail failWithMessage: string]];
 }
 
-- (void) parsedAlternate
+- (void)parsedAlternate
 {
     Node *second = [_stack lastObject];
     [_stack removeLastObject];
@@ -230,7 +210,7 @@
 }
 
 
-- (void) parsedClass:(NSString *)class
+- (void)parsedClass:(NSString *)class
 {
     CClass *cclass = [CClass cclassFromString:class];
     cclass.caseInsensitive = self.caseInsensitive;
@@ -238,19 +218,19 @@
 }
 
 
-- (void) parsedCode:(NSString *)code
+- (void)parsedCode:(NSString *)code
 {
     [_stack addObject:[Code codeWithString:code]];
 }
 
 
-- (void) parsedDot
+- (void)parsedDot
 {
     [_stack addObject:[Dot node]];
 }
 
 
-- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing asserted:(BOOL)asserted
+- (void)parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing asserted:(BOOL)asserted
 {
     Rule *rule = [_rules objectForKey:identifier];
     if (!rule)
@@ -264,7 +244,7 @@
 }
 
 
-- (void) parsedLiteral:(NSString *)literal asserted:(BOOL)asserted
+- (void)parsedLiteral:(NSString *)literal asserted:(BOOL)asserted
 {
     Literal *node = [Literal literalWithString:literal asserted:asserted];
     node.caseInsensitive = self.caseInsensitive;
@@ -272,7 +252,7 @@
 }
 
 
-- (void) parsedLookAhead
+- (void)parsedLookAhead
 {
     Node *node = [_stack lastObject];
     LookAhead *lookAhead = [LookAhead lookAheadWithNode:node];
@@ -282,14 +262,14 @@
 }
 
 
-- (void) parsedLookAhead:(NSString *)code
+- (void)parsedLookAhead:(NSString *)code
 {
     Condition *condition = [Condition conditionWithExpression:code];
     [_stack addObject:condition];
 }
 
 
-- (void) parsedNegativeLookAhead
+- (void)parsedNegativeLookAhead
 {
     Node *node = [_stack lastObject];
     LookAhead *lookAhead = [LookAhead lookAheadWithNode:node];
@@ -300,7 +280,7 @@
 }
 
 
-- (void) parsedNegativeLookAhead:(NSString *)code
+- (void)parsedNegativeLookAhead:(NSString *)code
 {
     Condition *condition = [Condition conditionWithExpression:code];
     [condition invert];
@@ -308,7 +288,7 @@
 }
 
 
-- (void) parsedPlus
+- (void)parsedPlus
 {
     Node *node = [_stack lastObject];
     Quantifier *quantifier = [Quantifier quantifierWithNode:node];
@@ -320,7 +300,7 @@
 }
 
 
-- (void) parsedQuestion
+- (void)parsedQuestion
 {
     Node *node = [_stack lastObject];
     Quantifier *quantifier = [Quantifier quantifierWithNode:node];
@@ -332,7 +312,7 @@
 }
 
 
-- (void) parsedRule
+- (void)parsedRule
 {
     Node *definition = [_stack lastObject];
     [_stack removeLastObject];
@@ -346,7 +326,7 @@
 }
 
 
-- (void) parsedStar
+- (void)parsedStar
 {
     Node *node = [_stack lastObject];
     Quantifier *quantifier = [Quantifier quantifierWithNode:node];
@@ -358,7 +338,7 @@
 }
 
 
-- (void) startRule:(NSString *)name
+- (void)startRule:(NSString *)name
 {
     Rule *rule = [_rules objectForKey:name];
     if (!rule)
@@ -379,25 +359,25 @@
 	[_imports addObject: [NSString stringWithFormat:@"#import %@", import]];
 }
 
-- (void) parsedPropertyParameters:(NSString *)parameters
+- (void)parsedPropertyParameters:(NSString *)parameters
 {
     _propertyParameters = [parameters copy];
 }
 
 
-- (void) parsedPropertyStars:(NSString *)stars
+- (void)parsedPropertyStars:(NSString *)stars
 {
     _propertyStars = [stars copy];
 }
 
 
-- (void) parsedPropertyType:(NSString *)type
+- (void)parsedPropertyType:(NSString *)type
 {
     _propertyType = [type copy];
 }
 
 
-- (void) parsedPropertyName:(NSString *)name
+- (void)parsedPropertyName:(NSString *)name
 {
     Property *property = [Property new];
     property.name = name;
@@ -408,7 +388,7 @@
     
 }
 
-- (void) parsedExtraCode:(NSString*)code {
+- (void)parsedExtraCode:(NSString*)code {
     self.extraCode = code;
 }
 

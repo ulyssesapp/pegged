@@ -8,20 +8,24 @@
 
 #import "Action.h"
 
+@interface Action ()
+{
+    NSString *_code;
+	BOOL _hasReturnValue;
+}
+
+@end
 
 @implementation Action
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Node Methods
-//==================================================================================================
+#pragma mark - Node Methods
 
-- (NSString *) compile:(NSString *)parserClassName
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
     
     [code appendFormat:@"[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(%@ *self, NSString *text) {\n", parserClassName];
-    [code appendString:[[_code stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
+    [code appendString:[[_code stringByAddingIndentationWithCount: 1] stringByRemovingTrailingWhitespace]];
 	if (!_hasReturnValue)
 		[code appendString: @"\n\n\treturn nil;\n"];
 	else
@@ -32,18 +36,15 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) actionWithCode:(NSString *)code returnValue:(BOOL)returnValue
++ (id)actionWithCode:(NSString *)code returnValue:(BOOL)returnValue
 {
     return [[[self class] alloc] initWithCode:code returnValue:returnValue];
 }
 
 
-- (id) initWithCode:(NSString *)code returnValue:(BOOL)returnValue
+- (id)initWithCode:(NSString *)code returnValue:(BOOL)returnValue
 {
     self = [super init];
     
@@ -55,6 +56,5 @@
     
     return self;
 }
-
 
 @end

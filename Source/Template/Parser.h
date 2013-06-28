@@ -3,8 +3,6 @@
 //  Fork: https://github.com/hydrixos/pegged
 //
 
-#import <Foundation/Foundation.h>
-
 //!$OtherClasses
 
 /*!
@@ -41,7 +39,7 @@ extern NSString *ParserClassErrorStringKey;
 
 
 /*!
- @abstract Methods available for parser actions
+ @abstract Methods available to parser actions
  */
 @interface ParserClass (ParserActionHelper)
 

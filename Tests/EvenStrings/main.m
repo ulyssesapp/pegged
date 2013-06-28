@@ -5,9 +5,6 @@
 //  Created by Matt Diephouse on 1/8/09.
 //  This code is in the public domain.
 //
-
-#import <Foundation/Foundation.h>
-
 #import "EvenParser.h"
 
 int main(int argc, const char * argv[])

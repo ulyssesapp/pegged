@@ -5,9 +5,6 @@
 //  Created by Matt Diephouse on 12/18/09.
 //  This code is in the public domain.
 //
-
-#import <Foundation/Foundation.h>
-
 @class Rule;
 
 @interface Compiler : NSObject

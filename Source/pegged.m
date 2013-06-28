@@ -5,9 +5,6 @@
 //  Created by Matt Diephouse on 12/17/09.
 //  This code is in the public domain.
 //
-
-#import <Foundation/Foundation.h>
-
 #import "Compiler.h"
 #import "PEGParser.h"
 #import "Version.h"

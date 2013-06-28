@@ -4,7 +4,6 @@
 //
 
 #import "PEGParser.h"
-
 #import "Compiler.h"
 
 #include <stdio.h>
@@ -104,7 +103,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
         _rules = [NSMutableDictionary new];
         _captures = [NSMutableArray new];
 		_actionResults = [NSMutableArray new];
-		
+
 		[self addRule:__AND withName:@"AND"];
 		[self addRule:__AT withName:@"AT"];
 		[self addRule:__Action withName:@"Action"];
@@ -155,12 +154,10 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 		[self addRule:__Space withName:@"Space"];
 		[self addRule:__Spacing withName:@"Spacing"];
 		[self addRule:__Suffix withName:@"Suffix"];
-
     }
     
     return self;
 }
-
 
 
 #pragma mark - String matching
@@ -331,7 +328,6 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 {
 	_lastError = nil;
 }
-
 
 
 #pragma mark - Action handling
@@ -1917,8 +1913,6 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger startIndex, NSInt
 	
 	return YES;
 };
-
-
 
 
 #pragma mark - Parsing methods

@@ -13,23 +13,15 @@
 
 @implementation Rule
 
-@synthesize name = _name;
-@synthesize used = _used;
+#pragma mark - Public Methods
 
-@synthesize definition = _definition;
-
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
-
-+ (id) ruleWithName:(NSString*)name
++ (id)ruleWithName:(NSString*)name
 {
     return [[[self class] alloc] initWithName:name];
 }
 
 
-- (id) initWithName:(NSString*)name
+- (id)initWithName:(NSString*)name
 {
     self = [super init];
     
@@ -42,7 +34,7 @@
 }
 
 
-- (NSString *) compile:(NSString *)parserClassName
+- (NSString *)compile:(NSString *)parserClassName
 {
     NSMutableString *code = [NSMutableString string];
     
@@ -53,12 +45,9 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Properties
-//==================================================================================================
+#pragma mark - Public Properties
 
-- (BOOL) defined
+- (BOOL)defined
 {
     return self.definition != nil;
 }

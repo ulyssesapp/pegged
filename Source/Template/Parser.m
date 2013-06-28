@@ -4,7 +4,6 @@
 //
 
 #import "Parser.h"
-
 //!$Imports
 
 #include <stdio.h>
@@ -104,13 +103,12 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
         _rules = [NSMutableDictionary new];
         _captures = [NSMutableArray new];
 		_actionResults = [NSMutableArray new];
-		
+
 //!$ParserDeclarations
     }
     
     return self;
 }
-
 
 
 #pragma mark - String matching
@@ -281,7 +279,6 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 {
 	_lastError = nil;
 }
-
 
 
 #pragma mark - Action handling

@@ -78,17 +78,21 @@ static void setbits(unsigned char bitset[], const char *cstring, BOOL caseInsens
     }
 }
 
+@interface CClass ()
+{
+    NSString *_string;
+    NSString *_repr;
+    
+    BOOL _caseInsensitive;
+}
+
+@end
+
 @implementation CClass
 
-@synthesize caseInsensitive = _caseInsensitive;
-@synthesize string = _string;
+#pragma mark - Terminal Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Terminal Methods
-//==================================================================================================
-
-- (NSString *) condition
+- (NSString *)condition
 {
     if (!_repr)
     {
@@ -110,18 +114,15 @@ static void setbits(unsigned char bitset[], const char *cstring, BOOL caseInsens
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) cclassFromString:(NSString *)class;
++ (id)cclassFromString:(NSString *)class;
 {
     return [[[self class] alloc] initWithString:class];
 }
 
 
-- (id) initWithString:(NSString *)class
+- (id)initWithString:(NSString *)class
 {
     self = [super init];
     

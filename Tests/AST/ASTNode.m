@@ -1,5 +1,5 @@
 //
-//  AST.m
+//  ASTNode.m
 //  pegged
 //
 //  Created by Friedrich Gräter.
@@ -69,7 +69,7 @@
 	NSMutableArray *descriptions = [NSMutableArray new];
 	
 	for (ASTNode *node in self.children)
-		[descriptions addObject: [[node description] stringIndentedByCount: 1]];
+		[descriptions addObject: [[node description] stringByAddingIndentationWithCount: 1]];
 	
 	return [NSString stringWithFormat: @"%@ from %lu, %lu with %@:\n%@", self.name, self.parsingRange.location, self.parsingRange.length, self.operator, [descriptions componentsJoinedByString: @"\n"]];
 }

@@ -7,19 +7,13 @@
 //
 
 #import "Subrule.h"
-
 #import "Rule.h"
 
 @implementation Subrule
 
-@synthesize rule = _rule;
+#pragma mark - Terminal Methods
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Terminal Methods
-//==================================================================================================
-
-- (NSString *) condition
+- (NSString *)condition
 {
     return [NSString stringWithFormat:@"[parser matchRule: @\"%@\" startIndex:startIndex asserted:%@]", self.rule.name, _asserted ? @"YES" : @"NO"];
 }
@@ -33,18 +27,15 @@
 }
 
 
-//==================================================================================================
-#pragma mark -
-#pragma mark Public Methods
-//==================================================================================================
+#pragma mark - Public Methods
 
-+ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted
++ (id)subruleWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted
 {
     return [[[self class] alloc] initWithRule:rule capturing:capturing asserted:asserted];
 }
 
 
-- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted
+- (id)initWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted
 {
     self = [super init];
     
@@ -57,6 +48,5 @@
     
     return self;
 }
-
 
 @end

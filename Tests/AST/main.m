@@ -6,8 +6,6 @@
 //  This code is in the public domain.
 //
 
-#import <Foundation/Foundation.h>
-
 #import "ASTNode.h"
 #import "ASTParser.h"
 

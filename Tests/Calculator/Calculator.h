@@ -6,9 +6,6 @@
 //  This code is in the public domain.
 //
 
-#import <Foundation/Foundation.h>
-
-
 @interface Calculator : NSObject
 {
     NSNumberFormatter *_formatter;
