@@ -11,15 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef matchDEBUG
-	#define yydebug(...)		{ NSLog(__VA_ARGS__); }
-	#define yyprintf(...)		{ yydebug(__VA_ARGS__); NSLog(@" at %@", [self positionDescriptionForIndex: _index]); }
-#else
-	#define yydebug(...)
-	#define yyprintf(...)
-#endif
-
-
 NSString *ParserClassErrorStringLocationKey		= @"ParserClassErrorStringLocation";
 NSString *ParserClassErrorStringLengthKey		= @"ParserClassErrorStringLength";
 NSString *ParserClassErrorStringKey				= @"ParserClassErrorString";
@@ -274,11 +265,9 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     
 	if (bits[c >> 3] & (1 << (c & 7))) {
         ++_index;
-        yyprintf(@"  ok   matchClass");
         return YES;
     }
 	
-    yyprintf(@"  fail matchClass");
     return NO;
 }
 

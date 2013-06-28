@@ -16,7 +16,6 @@
 Grammar <- Spacing Declaration* Spacing Definition+ EndOfFile
 
 Declaration <- OPTION "case-insensitive" HorizSpace* EndOfDecl { self.compiler.caseInsensitive = YES; }
-             / OPTION "match-debug" HorizSpace* EndOfDecl { self.compiler.matchDebug = YES; }
 			 / IMPORT ImportIdentifier HorizSpace* EndOfDecl { [self.compiler parsedImport:text]; }
              / PROPERTY (PropParamaters { [self.compiler parsedPropertyParameters:text]; })?
                         PropIdentifier           { [self.compiler parsedPropertyType:text]; }

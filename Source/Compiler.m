@@ -35,7 +35,6 @@
 @synthesize headerPath = _headerPath;
 @synthesize sourcePath = _sourcePath;
 @synthesize extraCode = _extraCode;
-@synthesize matchDebug = _matchDebug;
 
 //==================================================================================================
 #pragma mark -
@@ -119,10 +118,7 @@
     if (self.caseInsensitive) {
         [imports appendString:@"#define __PEG_PARSER_CASE_INSENSITIVE__\n"];
     }
-    if(self.matchDebug) {
-        [imports appendString: @"#define matchDEBUG\n"];        
-    }
-    
+   
     if(self.extraCode) {
         [definitions appendFormat: @"\n\
 //==================================================================================================\n\

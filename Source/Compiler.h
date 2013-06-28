@@ -24,7 +24,6 @@
     NSString *_propertyType;
     
     BOOL _caseInsensitive;
-    BOOL _matchDebug;
     
     NSString *_className;
     NSString *_headerPath;
@@ -33,7 +32,6 @@
 }
 
 @property (assign) BOOL caseInsensitive;
-@property (assign) BOOL matchDebug;
 
 @property (copy) NSString *className;
 @property (copy) NSString *headerPath;
