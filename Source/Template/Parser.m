@@ -20,13 +20,14 @@
 #endif
 
 
-NSString *ParserClassErrorStringIndexKey	= @"ParserClassErrorStringIndex";
-NSString *ParserClassErrorStringKey			= @"ParserClassErrorString";
+NSString *ParserClassErrorStringLocationKey		= @"ParserClassErrorStringLocation";
+NSString *ParserClassErrorStringLengthKey		= @"ParserClassErrorStringLength";
+NSString *ParserClassErrorStringKey				= @"ParserClassErrorString";
 
 #pragma mark - Internal types
 
 // A block implementing a certain parsing rule
-typedef BOOL (^ParserClassRule)(ParserClass *parser, NSInteger *localCaptures);
+typedef BOOL (^ParserClassRule)(ParserClass *parser, NSInteger startIndex, NSInteger *localCaptures);
 
 // A block implementing a certain parser action
 typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
@@ -51,7 +52,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 @property NSArray *allResults;
 
 // The index of the next result to be read by the action
-@property NSInteger nextIndex;
+@property NSInteger nextResultIndex;
 
 @end
 
@@ -74,7 +75,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	const char *_cstring;
 	NSUInteger _index;
 	NSUInteger _limit;
-	
+		
 	// Specifies whether the parser is currently capturing
 	BOOL _capturing;
 	
@@ -92,6 +93,8 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 @property (readonly) NSUInteger captureStart;
 @property (readonly) NSUInteger captureEnd;
 @property (readonly) NSString* string;
+
+@property (readonly) NSUInteger index;
 
 @end
 
@@ -128,7 +131,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     if (_capturing) _captureEnd = _index;
 }
 
-- (BOOL)invertWithCaptures:(NSInteger *)localCaptures block:(ParserClassRule)rule
+- (BOOL)invertWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(ParserClassRule)rule
 {
 	NSInteger temporaryCaptures = *localCaptures;
 	
@@ -136,14 +139,14 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	if (_lastError)
 		return NO;
 	
-    BOOL matched = ![self matchOneWithCaptures:&temporaryCaptures block:rule];
+    BOOL matched = ![self matchOneWithCaptures:&temporaryCaptures startIndex:startIndex block:rule];
 	if (matched)
 		*localCaptures = temporaryCaptures;
 	
 	return matched;
 }
 
-- (BOOL)lookAheadWithCaptures:(NSInteger *)localCaptures block:(ParserClassRule)rule
+- (BOOL)lookAheadWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(ParserClassRule)rule
 {
     NSUInteger index=_index;
 
@@ -156,7 +159,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	
 	NSInteger temporaryCaptures = *localCaptures;
 	
-    BOOL matched = rule(self, &temporaryCaptures);
+    BOOL matched = rule(self, startIndex, &temporaryCaptures);
     _capturing = capturing;
     _index=index;
 	_lastError = nil;
@@ -173,7 +176,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     return YES;
 }
 
-- (BOOL)matchOneWithCaptures:(NSInteger *)localCaptures block:(ParserClassRule)rule
+- (BOOL)matchOneWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(ParserClassRule)rule
 {
 	// We are in an error state. Just stop.
 	if (_lastError)
@@ -183,7 +186,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	NSInteger temporaryCaptures = *localCaptures;
 	
 	// Try to match
-    if (rule(self, &temporaryCaptures)) {
+    if (rule(self, startIndex, &temporaryCaptures)) {
 		*localCaptures = temporaryCaptures;
         return YES;
 	}
@@ -199,24 +202,24 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     return NO;
 }
 
-- (BOOL)matchManyWithCaptures:(NSInteger *)localCaptures block:(ParserClassRule)rule
+- (BOOL)matchManyWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(ParserClassRule)rule
 {
 	// We are in an error state. Just stop.
 	if (_lastError)
 		return NO;
 	
 	// We need at least one match
-    if (![self matchOneWithCaptures:localCaptures block:rule])
+    if (![self matchOneWithCaptures:localCaptures startIndex:startIndex block:rule])
         return NO;
 	
 	// Match others
-    while ([self matchOneWithCaptures:localCaptures block:rule])
+    while ([self matchOneWithCaptures:localCaptures startIndex:startIndex block:rule])
 		;
     
 	return YES;
 }
 
-- (BOOL)matchRule:(NSString *)ruleName asserted:(BOOL)asserted
+- (BOOL)matchRule:(NSString *)ruleName startIndex:(NSInteger)startIndex asserted:(BOOL)asserted
 {
     NSArray *rules = [_rules objectForKey: ruleName];
 
@@ -230,17 +233,17 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	for (ParserClassRule rule in rules) {
 		NSInteger localCaptures = 0;
 		
-		if ([self matchOneWithCaptures:&localCaptures block:rule])
+		if ([self matchOneWithCaptures:&localCaptures startIndex:_index block:rule])
 			return YES;
 	}
 
 	if (asserted)
-		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName]];
+		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName] location:startIndex length:(_index - startIndex)];
 	
     return NO;
 }
 
-- (BOOL)matchString:(char *)literal asserted:(BOOL)asserted
+- (BOOL)matchString:(char *)literal startIndex:(NSInteger)startIndex asserted:(BOOL)asserted
 {
 	NSInteger saved = _index;
 
@@ -249,7 +252,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 			_index = saved;
 			
 			if (asserted)
-				[self setErrorWithMessage: [NSString stringWithFormat: @"Missing:%s", literal]];
+				[self setErrorWithMessage: [NSString stringWithFormat: @"Missing:%s", literal] location:saved length:(_index - saved + 1)];
 			
 			return NO;
 		}
@@ -276,10 +279,10 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     return NO;
 }
 
-- (void)setErrorWithMessage:(NSString *)message
+- (void)setErrorWithMessage:(NSString *)message location:(NSInteger)location length:(NSInteger)length
 {
 	if (!_lastError)
-		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: message, ParserClassErrorStringIndexKey: @(_index), ParserClassErrorStringKey: _string}];;
+		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: message, ParserClassErrorStringLocationKey: @(location), ParserClassErrorStringLengthKey: @(length), ParserClassErrorStringKey: [_string copy]}];
 }
 
 - (void)clearError
@@ -312,12 +315,12 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 
 - (id)nextResult
 {
-	return [_currentCapture.allResults objectAtIndex: _currentCapture.nextIndex++];
+	return [_currentCapture.allResults objectAtIndex: _currentCapture.nextResultIndex++];
 }
 
 - (id)nextResultOrNil
 {
-	if (_currentCapture.allResults.count >= _currentCapture.nextIndex)
+	if (_currentCapture.allResults.count >= _currentCapture.nextResultIndex)
 		return nil;
 	
 	return [self nextResult];
@@ -383,7 +386,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     _capturing = YES;
     
 	// Do string matching
-    BOOL matched = [self matchRule: @"$StartRule" asserted:YES];
+    BOOL matched = [self matchRule: @"$StartRule" startIndex:_index asserted:YES];
     
 	// Process actions
     if (matched) {
@@ -399,7 +402,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 				
 				// Read all results
 				capture.allResults = [_actionResults subarrayWithRange: resultsRange];
-				capture.nextIndex = 0;
+				capture.nextResultIndex = 0;
 				
 				// Remove results from stack
 				[_actionResults removeObjectsInRange: resultsRange];

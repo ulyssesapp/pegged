@@ -21,19 +21,22 @@ BOOL checkError(NSString *equation)
 	NSString *expression	= [parts objectAtIndex:0];
 	
 	NSArray *expectedError			= [[parts lastObject] componentsSeparatedByString: @","];
-	if (expectedError.count != 2)
-		return NO;
+	if (expectedError.count != 3) {
+		NSLog(@"Invalid input: %@", equation);
+		return YES;
+	}
 
 	NSString *expectedErrorName		= [expectedError[0] stringByTrimmingCharactersInSet: [NSCharacterSet whitespaceCharacterSet]];
-	NSNumber *expectedErrorIndex	= [formatter numberFromString:expectedError[1]];
+	NSNumber *expectedErrorLocation	= [formatter numberFromString:expectedError[1]];
+	NSNumber *expectedErrorLength	= [formatter numberFromString:expectedError[2]];
 	
 	ASTParser *parser     = [ASTParser new];
 	ASTNode *node;
 	
 	BOOL matched = [parser parseString:expression usingResult:&node];
 	
-	if (matched || ![parser.lastError.localizedDescription isEqual: expectedErrorName] || ![parser.lastError.userInfo[ASTParserErrorStringIndexKey] isEqual: expectedErrorIndex]) {
-		NSLog(@"Expected error: '%@' at %@. Got '%@' at %@.", expectedErrorName, expectedErrorIndex, parser.lastError.localizedDescription, parser.lastError.userInfo[ASTParserErrorStringIndexKey]);
+	if (matched || ![parser.lastError.localizedDescription isEqual: expectedErrorName] || ![parser.lastError.userInfo[ASTParserErrorStringLocationKey] isEqual: expectedErrorLocation] || ![parser.lastError.userInfo[ASTParserErrorStringLengthKey] isEqual: expectedErrorLength]) {
+		NSLog(@"Expected error: '%@' at (%@,%@). Got '%@' at (%@,%@).", expectedErrorName, expectedErrorLocation, expectedErrorLength, parser.lastError.localizedDescription, parser.lastError.userInfo[ASTParserErrorStringLocationKey], parser.lastError.userInfo[ASTParserErrorStringLengthKey]);
 		hadError = YES;
 	}
 
@@ -89,6 +92,9 @@ int main (int argc, const char * argv[])
 
         for (NSString *equation in [contents componentsSeparatedByString:@"\n"])
         {
+			if (![[equation stringByTrimmingCharactersInSet: [NSCharacterSet whitespaceCharacterSet]] length])
+				continue;
+				
             if (matchErrors)
 				hadError |= checkError(equation);
 			else

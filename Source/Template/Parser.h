@@ -16,11 +16,12 @@
 
 /*!
  @abstract The last error state of the parser.
- @discussion ParserClassErrorStringIndexKey provides the string index of the error (NSNumber), ParserClassErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
+ @discussion ParserClassErrorStringLocationKey, ParserClassErrorStringLengthKey provides the index and length of the errorneous string (NSNumber), ParserClassErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
  */
 @property (readonly) NSError *lastError;
 
-extern NSString *ParserClassErrorStringIndexKey;
+extern NSString *ParserClassErrorStringLocationKey;
+extern NSString *ParserClassErrorStringLengthKey;
 extern NSString *ParserClassErrorStringKey;
 
 /*!

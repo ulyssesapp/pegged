@@ -19,7 +19,7 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat: @"[parser setErrorWithMessage: @\"%@\"];\n", _message];
+    [code appendFormat: @"[parser setErrorWithMessage: @\"%@\" location:parser.index length:1];\n", _message];
 	[code appendFormat: @"return NO;\n"];
 	
     return code;
