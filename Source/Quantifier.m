@@ -30,7 +30,7 @@
     if (!self.optional)
 		[code appendString:@"if (!"];
     
-    [code appendFormat:@"[parser %@WithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures){\n", selector, parserClassName];
+    [code appendFormat:@"[parser %@WithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", selector, parserClassName];
     [code appendString:[[[self.node compile:parserClassName] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
     [code appendString:@"\n\treturn YES;\n"];
     [code appendString:@"}]"];

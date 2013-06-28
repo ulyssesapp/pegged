@@ -20,13 +20,14 @@
 #endif
 
 
-NSString *PEGParserErrorStringIndexKey	= @"PEGParserErrorStringIndex";
-NSString *PEGParserErrorStringKey			= @"PEGParserErrorString";
+NSString *PEGParserErrorStringLocationKey		= @"PEGParserErrorStringLocation";
+NSString *PEGParserErrorStringLengthKey		= @"PEGParserErrorStringLength";
+NSString *PEGParserErrorStringKey				= @"PEGParserErrorString";
 
 #pragma mark - Internal types
 
 // A block implementing a certain parsing rule
-typedef BOOL (^PEGParserRule)(PEGParser *parser, NSInteger *localCaptures);
+typedef BOOL (^PEGParserRule)(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures);
 
 // A block implementing a certain parser action
 typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
@@ -41,6 +42,9 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 @property NSUInteger begin;
 @property NSUInteger end;
 
+// The parsed ranged used for this capture
+@property NSRange parsedRange;
+
 // The action associated with a capture
 @property (copy) PEGParserAction action;
 
@@ -51,7 +55,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 @property NSArray *allResults;
 
 // The index of the next result to be read by the action
-@property NSInteger nextIndex;
+@property NSInteger nextResultIndex;
 
 @end
 
@@ -74,7 +78,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	const char *_cstring;
 	NSUInteger _index;
 	NSUInteger _limit;
-	
+		
 	// Specifies whether the parser is currently capturing
 	BOOL _capturing;
 	
@@ -92,6 +96,8 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 @property (readonly) NSUInteger captureStart;
 @property (readonly) NSUInteger captureEnd;
 @property (readonly) NSString* string;
+
+@property (readonly) NSUInteger index;
 
 @end
 
@@ -178,7 +184,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
     if (_capturing) _captureEnd = _index;
 }
 
-- (BOOL)invertWithCaptures:(NSInteger *)localCaptures block:(PEGParserRule)rule
+- (BOOL)invertWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(PEGParserRule)rule
 {
 	NSInteger temporaryCaptures = *localCaptures;
 	
@@ -186,14 +192,14 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	if (_lastError)
 		return NO;
 	
-    BOOL matched = ![self matchOneWithCaptures:&temporaryCaptures block:rule];
+    BOOL matched = ![self matchOneWithCaptures:&temporaryCaptures startIndex:startIndex block:rule];
 	if (matched)
 		*localCaptures = temporaryCaptures;
 	
 	return matched;
 }
 
-- (BOOL)lookAheadWithCaptures:(NSInteger *)localCaptures block:(PEGParserRule)rule
+- (BOOL)lookAheadWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(PEGParserRule)rule
 {
     NSUInteger index=_index;
 
@@ -206,7 +212,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	
 	NSInteger temporaryCaptures = *localCaptures;
 	
-    BOOL matched = rule(self, &temporaryCaptures);
+    BOOL matched = rule(self, startIndex, &temporaryCaptures);
     _capturing = capturing;
     _index=index;
 	_lastError = nil;
@@ -223,7 +229,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
     return YES;
 }
 
-- (BOOL)matchOneWithCaptures:(NSInteger *)localCaptures block:(PEGParserRule)rule
+- (BOOL)matchOneWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(PEGParserRule)rule
 {
 	// We are in an error state. Just stop.
 	if (_lastError)
@@ -233,7 +239,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	NSInteger temporaryCaptures = *localCaptures;
 	
 	// Try to match
-    if (rule(self, &temporaryCaptures)) {
+    if (rule(self, startIndex, &temporaryCaptures)) {
 		*localCaptures = temporaryCaptures;
         return YES;
 	}
@@ -249,24 +255,24 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
     return NO;
 }
 
-- (BOOL)matchManyWithCaptures:(NSInteger *)localCaptures block:(PEGParserRule)rule
+- (BOOL)matchManyWithCaptures:(NSInteger *)localCaptures startIndex:(NSInteger)startIndex block:(PEGParserRule)rule
 {
 	// We are in an error state. Just stop.
 	if (_lastError)
 		return NO;
 	
 	// We need at least one match
-    if (![self matchOneWithCaptures:localCaptures block:rule])
+    if (![self matchOneWithCaptures:localCaptures startIndex:startIndex block:rule])
         return NO;
 	
 	// Match others
-    while ([self matchOneWithCaptures:localCaptures block:rule])
+    while ([self matchOneWithCaptures:localCaptures startIndex:startIndex block:rule])
 		;
     
 	return YES;
 }
 
-- (BOOL)matchRule:(NSString *)ruleName asserted:(BOOL)asserted
+- (BOOL)matchRule:(NSString *)ruleName startIndex:(NSInteger)startIndex asserted:(BOOL)asserted
 {
     NSArray *rules = [_rules objectForKey: ruleName];
 
@@ -280,17 +286,17 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	for (PEGParserRule rule in rules) {
 		NSInteger localCaptures = 0;
 		
-		if ([self matchOneWithCaptures:&localCaptures block:rule])
+		if ([self matchOneWithCaptures:&localCaptures startIndex:_index block:rule])
 			return YES;
 	}
 
 	if (asserted)
-		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName]];
+		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName] location:startIndex length:(_index - startIndex)];
 	
     return NO;
 }
 
-- (BOOL)matchString:(char *)literal asserted:(BOOL)asserted
+- (BOOL)matchString:(char *)literal startIndex:(NSInteger)startIndex asserted:(BOOL)asserted
 {
 	NSInteger saved = _index;
 
@@ -299,7 +305,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 			_index = saved;
 			
 			if (asserted)
-				[self setErrorWithMessage: [NSString stringWithFormat: @"Missing:%s", literal]];
+				[self setErrorWithMessage: [NSString stringWithFormat: @"Missing:%s", literal] location:saved length:(_index - saved + 1)];
 			
 			return NO;
 		}
@@ -326,17 +332,22 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
     return NO;
 }
 
-- (void)setErrorWithMessage:(NSString *)message
+- (void)setErrorWithMessage:(NSString *)message location:(NSInteger)location length:(NSInteger)length
 {
 	if (!_lastError)
-		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: message, PEGParserErrorStringIndexKey: @(_index), PEGParserErrorStringKey: _string}];;
+		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: message, PEGParserErrorStringLocationKey: @(location), PEGParserErrorStringLengthKey: @(length), PEGParserErrorStringKey: [_string copy]}];
+}
+
+- (void)clearError
+{
+	_lastError = nil;
 }
 
 
 
 #pragma mark - Action handling
 
-- (void)performActionUsingCaptures:(NSInteger)captures block:(PEGParserAction)action
+- (void)performActionUsingCaptures:(NSInteger)captures startIndex:(NSInteger)startIndex block:(PEGParserAction)action
 {
     PEGParserCapture *capture = [PEGParserCapture new];
     
@@ -344,6 +355,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
     capture.end = _captureEnd;
     
 	capture.action = action;
+	capture.parsedRange = NSMakeRange(startIndex, _index - startIndex);
 	
 	capture.capturedResultsCount = captures;
 
@@ -357,12 +369,12 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 
 - (id)nextResult
 {
-	return [_currentCapture.allResults objectAtIndex: _currentCapture.nextIndex++];
+	return [_currentCapture.allResults objectAtIndex: _currentCapture.nextResultIndex++];
 }
 
 - (id)nextResultOrNil
 {
-	if (_currentCapture.allResults.count >= _currentCapture.nextIndex)
+	if (_currentCapture.allResults.count >= _currentCapture.nextResultIndex)
 		return nil;
 	
 	return [self nextResult];
@@ -383,6 +395,11 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	return _currentCapture.allResults;
 }
 
+- (NSRange)rangeForCurrentAction
+{
+	return _currentCapture.parsedRange;
+}
+
 
 #pragma mark - Rule definitions
 
@@ -397,36 +414,36 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
     [rules addObject:rule];
 }
 
-static PEGParserRule __AND = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __AND = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'AND'\n");
 	
-	if (![parser matchString: "&" asserted:NO])
+	if (![parser matchString:"&" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __AT = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __AT = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'AT'\n");
 	
-	if (![parser matchString: "@" asserted:NO])
+	if (![parser matchString:"@" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Action = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Action = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Action'\n");
 	
-	if (![parser matchString: "{" asserted:NO])
+	if (![parser matchString:"{" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser beginCapture];
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if (![parser matchClass: (unsigned char *)"\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\337\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"])
 			return NO;
 		return YES;
@@ -434,54 +451,54 @@ static PEGParserRule __Action = ^(PEGParser *parser, NSInteger *localCaptures){
 	
 	[parser endCapture];
 	
-	if (![parser matchString: "}" asserted:NO])
+	if (![parser matchString:"}" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __BEGIN = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __BEGIN = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'BEGIN'\n");
 	
-	if (![parser matchString: "<" asserted:NO])
+	if (![parser matchString:"<" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __CIRCUMFLEX = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __CIRCUMFLEX = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'CIRCUMFLEX'\n");
 	
-	if (![parser matchString: "^" asserted:NO])
+	if (![parser matchString:"^" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __CLOSE = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __CLOSE = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'CLOSE'\n");
 	
-	if (![parser matchString: ")" asserted:NO])
+	if (![parser matchString:")" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Char = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Char = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Char'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\\" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\\" startIndex:startIndex asserted:NO])
 				return NO;
 			
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\204\000\000\000\000\000\000\070\000\100\024\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
@@ -491,8 +508,8 @@ static PEGParserRule __Char = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\\" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\\" startIndex:startIndex asserted:NO])
 				return NO;
 			
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\007\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
@@ -508,14 +525,14 @@ static PEGParserRule __Char = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\\" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\\" startIndex:startIndex asserted:NO])
 				return NO;
 			
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\377\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 				return NO;
 			
-			[parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+			[parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 				if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\377\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 					return NO;
 				return YES;
@@ -525,8 +542,8 @@ static PEGParserRule __Char = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\\x" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\\x" startIndex:startIndex asserted:NO])
 				return NO;
 			
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\377\003\176\000\000\000\176\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
@@ -539,9 +556,9 @@ static PEGParserRule __Char = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if ([parser matchString: "\\" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if ([parser matchString:"\\" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
@@ -562,24 +579,24 @@ static PEGParserRule __Char = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __Class = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Class = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Class'\n");
 	
-	if (![parser matchString: "[" asserted:NO])
+	if (![parser matchString:"[" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser beginCapture];
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if ([parser matchString: "]" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if ([parser matchString:"]" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
 		}])
 			return NO;
 		
-		if (![parser matchRule: @"Range" asserted:NO])
+		if (![parser matchRule: @"Range" startIndex:startIndex asserted:NO])
 			return NO;
 	
 		return YES;
@@ -587,24 +604,24 @@ static PEGParserRule __Class = ^(PEGParser *parser, NSInteger *localCaptures){
 	
 	[parser endCapture];
 	
-	if (![parser matchString: "]" asserted:NO])
+	if (![parser matchString:"]" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Code = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Code = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Code'\n");
 	
-	if (![parser matchString: "{{" asserted:NO])
+	if (![parser matchString:"{{" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser beginCapture];
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if (![parser matchClass: (unsigned char *)"\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\337\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"])
 			return NO;
 		return YES;
@@ -612,24 +629,24 @@ static PEGParserRule __Code = ^(PEGParser *parser, NSInteger *localCaptures){
 	
 	[parser endCapture];
 	
-	if (![parser matchString: "}}" asserted:NO])
+	if (![parser matchString:"}}" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Comment = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Comment = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Comment'\n");
 	
-	if (![parser matchString: "#" asserted:NO])
+	if (![parser matchString:"#" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if ([parser matchRule: @"EndOfLine" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if ([parser matchRule: @"EndOfLine" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
@@ -642,45 +659,45 @@ static PEGParserRule __Comment = ^(PEGParser *parser, NSInteger *localCaptures){
 		return YES;
 	}];
 	
-	if (![parser matchRule: @"EndOfLine" asserted:NO])
+	if (![parser matchRule: @"EndOfLine" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __DOT = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __DOT = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'DOT'\n");
 	
-	if (![parser matchString: "." asserted:NO])
+	if (![parser matchString:"." startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Declaration'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"OPTION" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"OPTION" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchString: "case-insensitive" asserted:NO])
+			if (![parser matchString:"case-insensitive" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"HorizSpace" asserted:NO])
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}];
 			
-			if (![parser matchRule: @"EndOfDecl" asserted:NO])
+			if (![parser matchRule: @"EndOfDecl" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 self.compiler.caseInsensitive = YES;
 			
 				return nil;
@@ -690,23 +707,23 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"OPTION" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"OPTION" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchString: "match-debug" asserted:NO])
+			if (![parser matchString:"match-debug" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"HorizSpace" asserted:NO])
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}];
 			
-			if (![parser matchRule: @"EndOfDecl" asserted:NO])
+			if (![parser matchRule: @"EndOfDecl" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 self.compiler.matchDebug = YES;
 			
 				return nil;
@@ -716,23 +733,23 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"IMPORT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"IMPORT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"ImportIdentifier" asserted:NO])
+			if (![parser matchRule: @"ImportIdentifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"HorizSpace" asserted:NO])
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}];
 			
-			if (![parser matchRule: @"EndOfDecl" asserted:NO])
+			if (![parser matchRule: @"EndOfDecl" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedImport:text];
 			
 				return nil;
@@ -742,15 +759,15 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"PROPERTY" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"PROPERTY" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"PropParamaters" asserted:NO])
+			[parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"PropParamaters" startIndex:startIndex asserted:NO])
 					return NO;
 				
-				[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+				[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 					 [self.compiler parsedPropertyParameters:text];
 				
 					return nil;
@@ -759,10 +776,10 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 				return YES;
 			}];
 			
-			if (![parser matchRule: @"PropIdentifier" asserted:NO])
+			if (![parser matchRule: @"PropIdentifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedPropertyType:text];
 			
 				return nil;
@@ -770,33 +787,33 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 			
 			[parser beginCapture];
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchString: "*" asserted:NO])
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchString:"*" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}];
 			
 			[parser endCapture];
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"HorizSpace" asserted:NO])
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}];
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedPropertyStars:text];
 			
 				return nil;
 			}];
 			
-			if (![parser matchRule: @"PropIdentifier" asserted:NO])
+			if (![parser matchRule: @"PropIdentifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"EndOfDecl" asserted:NO])
+			if (![parser matchRule: @"EndOfDecl" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedPropertyName:text];
 			
 				return nil;
@@ -806,8 +823,8 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"ExtraCode" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"ExtraCode" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -820,25 +837,25 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger *localCaptur
 	return YES;
 };
 
-static PEGParserRule __Definition = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Definition = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Definition'\n");
 	
-	if (![parser matchRule: @"Identifier" asserted:NO])
+	if (![parser matchRule: @"Identifier" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+	[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 		 [self.compiler startRule:text];
 	
 		return nil;
 	}];
 	
-	if (![parser matchRule: @"LEFTARROW" asserted:NO])
+	if (![parser matchRule: @"LEFTARROW" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Expression" asserted:NO])
+	if (![parser matchRule: @"Expression" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+	[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 		 [self.compiler parsedRule];
 	
 		return nil;
@@ -847,27 +864,27 @@ static PEGParserRule __Definition = ^(PEGParser *parser, NSInteger *localCapture
 	return YES;
 };
 
-static PEGParserRule __END = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __END = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'END'\n");
 	
-	if (![parser matchString: ">" asserted:NO])
+	if (![parser matchString:">" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Effect'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Code" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Code" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedCode:text];
 			
 				return nil;
@@ -877,11 +894,11 @@ static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Action" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Action" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedAction:text returnValue:NO];
 			
 				return nil;
@@ -891,14 +908,14 @@ static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"CIRCUMFLEX" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"CIRCUMFLEX" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Action" asserted:NO])
+			if (![parser matchRule: @"Action" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedAction:text returnValue:YES];
 			
 				return nil;
@@ -908,11 +925,11 @@ static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Fail" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Fail" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedFail: text];
 			
 				return nil;
@@ -922,11 +939,11 @@ static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"BEGIN" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"BEGIN" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler beginCapture];
 			
 				return nil;
@@ -936,11 +953,11 @@ static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"END" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"END" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler endCapture];
 			
 				return nil;
@@ -957,28 +974,28 @@ static PEGParserRule __Effect = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __EndOfDecl = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __EndOfDecl = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'EndOfDecl'\n");
 	
-	if (![parser matchString: ";" asserted:NO])
+	if (![parser matchString:";" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"HorizSpace" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"EndOfLine" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"EndOfLine" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Comment" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Comment" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -991,10 +1008,10 @@ static PEGParserRule __EndOfDecl = ^(PEGParser *parser, NSInteger *localCaptures
 	return YES;
 };
 
-static PEGParserRule __EndOfFile = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __EndOfFile = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'EndOfFile'\n");
 	
-	if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if ([parser matchDot])
 			return NO;
 	
@@ -1005,26 +1022,26 @@ static PEGParserRule __EndOfFile = ^(PEGParser *parser, NSInteger *localCaptures
 	return YES;
 };
 
-static PEGParserRule __EndOfLine = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __EndOfLine = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'EndOfLine'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\r\n" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\r\n" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\n" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\n" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\r" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\r" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -1037,20 +1054,20 @@ static PEGParserRule __EndOfLine = ^(PEGParser *parser, NSInteger *localCaptures
 	return YES;
 };
 
-static PEGParserRule __Expression = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Expression = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Expression'\n");
 	
-	if (![parser matchRule: @"Sequence" asserted:NO])
+	if (![parser matchRule: @"Sequence" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"SLASH" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"SLASH" startIndex:startIndex asserted:NO])
 			return NO;
 		
-		if (![parser matchRule: @"Sequence" asserted:NO])
+		if (![parser matchRule: @"Sequence" startIndex:startIndex asserted:NO])
 			return NO;
 		
-		[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+		[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 			 [self.compiler parsedAlternate];
 		
 			return nil;
@@ -1062,15 +1079,15 @@ static PEGParserRule __Expression = ^(PEGParser *parser, NSInteger *localCapture
 	return YES;
 };
 
-static PEGParserRule __ExtraCode = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __ExtraCode = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'ExtraCode'\n");
 	
-	if (![parser matchString: "%%" asserted:NO])
+	if (![parser matchString:"%%" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser beginCapture];
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if (![parser matchClass: (unsigned char *)"\377\377\377\377\337\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"])
 			return NO;
 		return YES;
@@ -1078,10 +1095,10 @@ static PEGParserRule __ExtraCode = ^(PEGParser *parser, NSInteger *localCaptures
 	
 	[parser endCapture];
 	
-	if (![parser matchString: "%%" asserted:NO])
+	if (![parser matchString:"%%" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+	[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 		 [self.compiler parsedExtraCode: text];
 	
 		return nil;
@@ -1090,15 +1107,15 @@ static PEGParserRule __ExtraCode = ^(PEGParser *parser, NSInteger *localCaptures
 	return YES;
 };
 
-static PEGParserRule __Fail = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Fail = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Fail'\n");
 	
-	if (![parser matchString: "@!" asserted:NO])
+	if (![parser matchString:"@!" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser beginCapture];
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\377\003\376\377\377\007\376\377\377\007\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 			return NO;
 		return YES;
@@ -1107,23 +1124,23 @@ static PEGParserRule __Fail = ^(PEGParser *parser, NSInteger *localCaptures){
 	
 	[parser endCapture];
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __GlobalImportIdentifier = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __GlobalImportIdentifier = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'GlobalImportIdentifier'\n");
 	
 	[parser beginCapture];
 	
-	if (![parser matchString: "<" asserted:NO])
+	if (![parser matchString:"<" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if ([parser matchString: "<" asserted:NO])
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if ([parser matchString:"<" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
@@ -1137,7 +1154,7 @@ static PEGParserRule __GlobalImportIdentifier = ^(PEGParser *parser, NSInteger *
 	}])
 		return NO;
 	
-	if (![parser matchString: ">" asserted:NO])
+	if (![parser matchString:">" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser endCapture];
@@ -1145,47 +1162,47 @@ static PEGParserRule __GlobalImportIdentifier = ^(PEGParser *parser, NSInteger *
 	return YES;
 };
 
-static PEGParserRule __Grammar = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Grammar = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Grammar'\n");
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"Declaration" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"Declaration" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"Definition" asserted:NO])
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"Definition" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}])
 		return NO;
 	
-	if (![parser matchRule: @"EndOfFile" asserted:NO])
+	if (![parser matchRule: @"EndOfFile" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __HorizSpace = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __HorizSpace = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'HorizSpace'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: " " asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:" " startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\t" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\t" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -1198,14 +1215,14 @@ static PEGParserRule __HorizSpace = ^(PEGParser *parser, NSInteger *localCapture
 	return YES;
 };
 
-static PEGParserRule __IMPORT = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __IMPORT = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'IMPORT'\n");
 	
-	if (![parser matchString: "@import" asserted:NO])
+	if (![parser matchString:"@import" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"HorizSpace" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
@@ -1213,18 +1230,18 @@ static PEGParserRule __IMPORT = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __IdentCont = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __IdentCont = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'IdentCont'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"IdentStart" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"IdentStart" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\377\003\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 				return NO;
 			return YES;
@@ -1238,7 +1255,7 @@ static PEGParserRule __IdentCont = ^(PEGParser *parser, NSInteger *localCaptures
 	return YES;
 };
 
-static PEGParserRule __IdentStart = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __IdentStart = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'IdentStart'\n");
 	
 	if (![parser matchClass: (unsigned char *)"\000\000\000\000\000\000\000\000\376\377\377\207\376\377\377\007\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
@@ -1247,41 +1264,41 @@ static PEGParserRule __IdentStart = ^(PEGParser *parser, NSInteger *localCapture
 	return YES;
 };
 
-static PEGParserRule __Identifier = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Identifier = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Identifier'\n");
 	
 	[parser beginCapture];
 	
-	if (![parser matchRule: @"IdentStart" asserted:NO])
+	if (![parser matchRule: @"IdentStart" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"IdentCont" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"IdentCont" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
 	
 	[parser endCapture];
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __ImportIdentifier = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __ImportIdentifier = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'ImportIdentifier'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"LocalImportIdentifier" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"LocalImportIdentifier" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"GlobalImportIdentifier" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"GlobalImportIdentifier" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -1294,30 +1311,30 @@ static PEGParserRule __ImportIdentifier = ^(PEGParser *parser, NSInteger *localC
 	return YES;
 };
 
-static PEGParserRule __LEFTARROW = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __LEFTARROW = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'LEFTARROW'\n");
 	
-	if (![parser matchString: "<-" asserted:NO])
+	if (![parser matchString:"<-" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Literal'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\200\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 				return NO;
 			
 			[parser beginCapture];
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 					if ([parser matchClass: (unsigned char *)"\000\000\000\000\200\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 						return NO;
 				
@@ -1325,7 +1342,7 @@ static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger *localCaptures){
 				}])
 					return NO;
 				
-				if (![parser matchRule: @"Char" asserted:NO])
+				if (![parser matchRule: @"Char" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
@@ -1336,21 +1353,21 @@ static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger *localCaptures){
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\200\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 				return NO;
 			
-			if (![parser matchRule: @"Spacing" asserted:NO])
+			if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\004\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 				return NO;
 			
 			[parser beginCapture];
 			
-			[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+			[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 					if ([parser matchClass: (unsigned char *)"\000\000\000\000\004\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 						return NO;
 				
@@ -1358,7 +1375,7 @@ static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger *localCaptures){
 				}])
 					return NO;
 				
-				if (![parser matchRule: @"Char" asserted:NO])
+				if (![parser matchRule: @"Char" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
@@ -1369,7 +1386,7 @@ static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger *localCaptures){
 			if (![parser matchClass: (unsigned char *)"\000\000\000\000\004\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"])
 				return NO;
 			
-			if (![parser matchRule: @"Spacing" asserted:NO])
+			if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
@@ -1383,17 +1400,17 @@ static PEGParserRule __Literal = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __LocalImportIdentifier = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __LocalImportIdentifier = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'LocalImportIdentifier'\n");
 	
 	[parser beginCapture];
 	
-	if (![parser matchString: "\"" asserted:NO])
+	if (![parser matchString:"\"" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if ([parser matchString: "\"" asserted:NO])
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if ([parser matchString:"\"" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
@@ -1407,7 +1424,7 @@ static PEGParserRule __LocalImportIdentifier = ^(PEGParser *parser, NSInteger *l
 	}])
 		return NO;
 	
-	if (![parser matchString: "\"" asserted:NO])
+	if (![parser matchString:"\"" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser endCapture];
@@ -1415,38 +1432,38 @@ static PEGParserRule __LocalImportIdentifier = ^(PEGParser *parser, NSInteger *l
 	return YES;
 };
 
-static PEGParserRule __NOT = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __NOT = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'NOT'\n");
 	
-	if (![parser matchString: "!" asserted:NO])
+	if (![parser matchString:"!" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __OPEN = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __OPEN = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'OPEN'\n");
 	
-	if (![parser matchString: "(" asserted:NO])
+	if (![parser matchString:"(" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __OPTION = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __OPTION = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'OPTION'\n");
 	
-	if (![parser matchString: "@option" asserted:NO])
+	if (![parser matchString:"@option" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"HorizSpace" asserted:NO])
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}])
@@ -1455,35 +1472,35 @@ static PEGParserRule __OPTION = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __PERCENT = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __PERCENT = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'PERCENT'\n");
 	
-	if (![parser matchString: "%" asserted:NO])
+	if (![parser matchString:"%" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __PLUS = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __PLUS = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'PLUS'\n");
 	
-	if (![parser matchString: "+" asserted:NO])
+	if (![parser matchString:"+" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __PROPERTY = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __PROPERTY = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'PROPERTY'\n");
 	
-	if (![parser matchString: "@property" asserted:NO])
+	if (![parser matchString:"@property" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"HorizSpace" asserted:NO])
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}])
@@ -1492,18 +1509,18 @@ static PEGParserRule __PROPERTY = ^(PEGParser *parser, NSInteger *localCaptures)
 	return YES;
 };
 
-static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Prefix'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"AND" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"AND" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Suffix" asserted:NO])
+			if (![parser matchRule: @"Suffix" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedLookAhead];
 			
 				return nil;
@@ -1513,14 +1530,14 @@ static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"NOT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"NOT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Suffix" asserted:NO])
+			if (![parser matchRule: @"Suffix" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedNegativeLookAhead];
 			
 				return nil;
@@ -1530,14 +1547,14 @@ static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"AND" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"AND" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Action" asserted:NO])
+			if (![parser matchRule: @"Action" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedLookAhead:text];
 			
 				return nil;
@@ -1547,14 +1564,14 @@ static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"NOT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"NOT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Action" asserted:NO])
+			if (![parser matchRule: @"Action" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedNegativeLookAhead:text];
 			
 				return nil;
@@ -1564,15 +1581,15 @@ static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Suffix" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Suffix" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Effect" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Effect" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -1585,23 +1602,23 @@ static PEGParserRule __Prefix = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Primary'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Identifier" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Identifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if ([parser matchRule: @"LEFTARROW" asserted:NO])
+			if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if ([parser matchRule: @"LEFTARROW" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
 			}])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedIdentifier:text capturing:NO asserted:NO];
 			
 				return nil;
@@ -1611,22 +1628,22 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"PERCENT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"PERCENT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Identifier" asserted:NO])
+			if (![parser matchRule: @"Identifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if ([parser matchRule: @"LEFTARROW" asserted:NO])
+			if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if ([parser matchRule: @"LEFTARROW" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
 			}])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedIdentifier:text capturing:YES asserted:NO];
 			
 				return nil;
@@ -1636,22 +1653,22 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"AT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"AT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Identifier" asserted:NO])
+			if (![parser matchRule: @"Identifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if ([parser matchRule: @"LEFTARROW" asserted:NO])
+			if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if ([parser matchRule: @"LEFTARROW" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
 			}])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedIdentifier:text capturing:NO asserted:YES];
 			
 				return nil;
@@ -1661,25 +1678,25 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"AT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"AT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"PERCENT" asserted:NO])
+			if (![parser matchRule: @"PERCENT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Identifier" asserted:NO])
+			if (![parser matchRule: @"Identifier" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser lookAheadWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if ([parser matchRule: @"LEFTARROW" asserted:NO])
+			if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if ([parser matchRule: @"LEFTARROW" startIndex:startIndex asserted:NO])
 					return NO;
 			
 				return YES;
 			}])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedIdentifier:text capturing:YES asserted:YES];
 			
 				return nil;
@@ -1689,25 +1706,25 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"OPEN" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"OPEN" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Expression" asserted:NO])
+			if (![parser matchRule: @"Expression" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"CLOSE" asserted:NO])
+			if (![parser matchRule: @"CLOSE" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Literal" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Literal" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedLiteral:text asserted:NO];
 			
 				return nil;
@@ -1717,14 +1734,14 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"AT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"AT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Literal" asserted:NO])
+			if (![parser matchRule: @"Literal" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedLiteral:text asserted:YES];
 			
 				return nil;
@@ -1734,11 +1751,11 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Class" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Class" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedClass:text];
 			
 				return nil;
@@ -1748,11 +1765,11 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"DOT" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"DOT" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+			[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 				 [self.compiler parsedDot];
 			
 				return nil;
@@ -1769,24 +1786,24 @@ static PEGParserRule __Primary = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __PropIdentifier = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __PropIdentifier = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'PropIdentifier'\n");
 	
 	[parser beginCapture];
 	
-	if (![parser matchRule: @"IdentStart" asserted:NO])
+	if (![parser matchRule: @"IdentStart" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"IdentCont" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"IdentCont" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
 	
 	[parser endCapture];
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"HorizSpace" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
@@ -1794,28 +1811,28 @@ static PEGParserRule __PropIdentifier = ^(PEGParser *parser, NSInteger *localCap
 	return YES;
 };
 
-static PEGParserRule __PropParamaters = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __PropParamaters = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'PropParamaters'\n");
 	
 	[parser beginCapture];
 	
-	if (![parser matchString: "(" asserted:NO])
+	if (![parser matchString:"(" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if (![parser matchClass: (unsigned char *)"\377\377\377\377\377\375\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"])
 			return NO;
 		return YES;
 	}])
 		return NO;
 	
-	if (![parser matchString: ")" asserted:NO])
+	if (![parser matchString:")" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	[parser endCapture];
 	
-	if (![parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"HorizSpace" asserted:NO])
+	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"HorizSpace" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}])
@@ -1824,38 +1841,38 @@ static PEGParserRule __PropParamaters = ^(PEGParser *parser, NSInteger *localCap
 	return YES;
 };
 
-static PEGParserRule __QUESTION = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __QUESTION = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'QUESTION'\n");
 	
-	if (![parser matchString: "?" asserted:NO])
+	if (![parser matchString:"?" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Range = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Range = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Range'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Char" asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Char" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchString: "-" asserted:NO])
+			if (![parser matchString:"-" startIndex:startIndex asserted:NO])
 				return NO;
 			
-			if (![parser matchRule: @"Char" asserted:NO])
+			if (![parser matchRule: @"Char" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"Char" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Char" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -1868,44 +1885,44 @@ static PEGParserRule __Range = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __SLASH = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __SLASH = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'SLASH'\n");
 	
-	if (![parser matchString: "/" asserted:NO])
+	if (![parser matchString:"/" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __STAR = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __STAR = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'STAR'\n");
 	
-	if (![parser matchString: "*" asserted:NO])
+	if (![parser matchString:"*" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	if (![parser matchRule: @"Spacing" asserted:NO])
+	if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 		return NO;
 	
 	return YES;
 };
 
-static PEGParserRule __Sequence = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Sequence = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Sequence'\n");
 	
-	[parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"Prefix" asserted:NO])
+	[parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"Prefix" startIndex:startIndex asserted:NO])
 			return NO;
 		return YES;
 	}];
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchRule: @"Prefix" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchRule: @"Prefix" startIndex:startIndex asserted:NO])
 			return NO;
 		
-		[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+		[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 			 [self.compiler append];
 		
 			return nil;
@@ -1917,26 +1934,26 @@ static PEGParserRule __Sequence = ^(PEGParser *parser, NSInteger *localCaptures)
 	return YES;
 };
 
-static PEGParserRule __Space = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Space = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Space'\n");
 	
-	if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: " " asserted:NO])
+	if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:" " startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchString: "\t" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchString:"\t" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
 			return YES;
 	
-		if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if (![parser matchRule: @"EndOfLine" asserted:NO])
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"EndOfLine" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
@@ -1949,20 +1966,20 @@ static PEGParserRule __Space = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __Spacing = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Spacing = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Spacing'\n");
 	
-	[parser matchManyWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"Space" asserted:NO])
+	[parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"Space" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}])
 				return YES;
 		
-			if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"Comment" asserted:NO])
+			if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"Comment" startIndex:startIndex asserted:NO])
 					return NO;
 				return YES;
 			}])
@@ -1978,19 +1995,19 @@ static PEGParserRule __Spacing = ^(PEGParser *parser, NSInteger *localCaptures){
 	return YES;
 };
 
-static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger *localCaptures){
+static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 	yydebug(@"Rule: 'Suffix'\n");
 	
-	if (![parser matchRule: @"Primary" asserted:NO])
+	if (![parser matchRule: @"Primary" startIndex:startIndex asserted:NO])
 		return NO;
 	
-	[parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-		if (![parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-			if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"QUESTION" asserted:NO])
+	[parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+		if (![parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"QUESTION" startIndex:startIndex asserted:NO])
 					return NO;
 				
-				[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+				[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 					 [self.compiler parsedQuestion];
 				
 					return nil;
@@ -2000,11 +2017,11 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger *localCaptures){
 			}])
 				return YES;
 		
-			if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"STAR" asserted:NO])
+			if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"STAR" startIndex:startIndex asserted:NO])
 					return NO;
 				
-				[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+				[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 					 [self.compiler parsedStar];
 				
 					return nil;
@@ -2014,11 +2031,11 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger *localCaptures){
 			}])
 				return YES;
 		
-			if ([parser matchOneWithCaptures:localCaptures block:^(PEGParser *parser, NSInteger *localCaptures){
-				if (![parser matchRule: @"PLUS" asserted:NO])
+			if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+				if (![parser matchRule: @"PLUS" startIndex:startIndex asserted:NO])
 					return NO;
 				
-				[parser performActionUsingCaptures:*localCaptures block:^id(PEGParser *self, NSString *text){
+				[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(PEGParser *self, NSString *text) {
 					 [self.compiler parsedPlus];
 				
 					return nil;
@@ -2069,7 +2086,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger *localCaptures){
     _capturing = YES;
     
 	// Do string matching
-    BOOL matched = [self matchRule: @"Grammar" asserted:YES];
+    BOOL matched = [self matchRule: @"Grammar" startIndex:_index asserted:YES];
     
 	// Process actions
     if (matched) {
@@ -2081,19 +2098,22 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger *localCaptures){
 			NSRange resultsRange = NSMakeRange(_actionResults.count - resultsCount, resultsCount);
 			
 			if (resultsCount) {
-				NSLog(@"%li %@ %li", _actionResults.count, _actionResults, resultsCount);
-				
 				// Read all results
 				capture.allResults = [_actionResults subarrayWithRange: resultsRange];
-				capture.nextIndex = 0;
+				capture.nextResultIndex = 0;
 				
 				// Remove results from stack
 				[_actionResults removeObjectsInRange: resultsRange];
 			}
 			
 			id result = capture.action(self, [self yyText:capture.begin to:capture.end]);
-			if (result)
+			if (result) {
+				// Set parsing range for diagnostics
+				if ([result respondsToSelector: @selector(setParsingRange:)])
+					[result setParsingRange: capture.parsedRange];
+				
 				[self pushResult: result];
+			}
 		}
 		
 		// Provide final result if any

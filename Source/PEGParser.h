@@ -18,11 +18,12 @@
 
 /*!
  @abstract The last error state of the parser.
- @discussion PEGParserErrorStringIndexKey provides the string index of the error (NSNumber), PEGParserErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
+ @discussion PEGParserErrorStringLocationKey, PEGParserErrorStringLengthKey provides the index and length of the errorneous string (NSNumber), PEGParserErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
  */
 @property (readonly) NSError *lastError;
 
-extern NSString *PEGParserErrorStringIndexKey;
+extern NSString *PEGParserErrorStringLocationKey;
+extern NSString *PEGParserErrorStringLengthKey;
 extern NSString *PEGParserErrorStringKey;
 
 /*!
@@ -97,5 +98,26 @@ extern NSString *PEGParserErrorStringKey;
  @abstract Provides the count of results.
  */
 - (NSInteger)resultCount;
+
+/*!
+ @abstract Provides the range of the current action
+ */
+- (NSRange)rangeForCurrentAction;
+
+@end
+
+
+
+/*!
+ @abstract A protocol that is used to annotate diagnostic informations on parser results
+*/
+@protocol PEGParserDiagnostics <NSObject>
+
+@optional
+
+/*!
+ @abstract Sets the ranged used to create the node.
+ */
+- (void)setParsingRange:(NSRange)range;
 
 @end

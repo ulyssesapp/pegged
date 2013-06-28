@@ -147,7 +147,7 @@
         }
         
         [declarations appendFormat:@"\t\t[self addRule:__%@ withName:@\"%@\"];\n", rule.name, rule.name];
-        [definitions appendFormat:@"static %@Rule __%@ = ^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures){\n", self.className, rule.name, self.className];
+        [definitions appendFormat:@"static %@Rule __%@ = ^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", self.className, rule.name, self.className];
         [definitions appendString:[[[rule compile:self.className] stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
         [definitions appendFormat:@"\n};\n\n"];
     }
