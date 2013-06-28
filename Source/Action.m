@@ -20,7 +20,7 @@
 {
     NSMutableString *code = [NSMutableString string];
     
-    [code appendFormat:@"[parser performActionUsingCaptures:*localCaptures block:^id(%@ *self, NSString *text){\n", parserClassName];
+    [code appendFormat:@"[parser performActionUsingCaptures:*localCaptures startIndex:startIndex block:^id(%@ *self, NSString *text){\n", parserClassName];
     [code appendString:[[_code stringIndentedByCount: 1] stringByRemovingTrailingWhitespace]];
 	if (!_hasReturnValue)
 		[code appendString: @"\n\n\treturn nil;\n"];

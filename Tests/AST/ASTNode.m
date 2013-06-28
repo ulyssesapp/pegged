@@ -71,7 +71,7 @@
 	for (ASTNode *node in self.children)
 		[descriptions addObject: [[node description] stringIndentedByCount: 1]];
 	
-	return [NSString stringWithFormat: @"%@ with %@:\n%@", self.name, self.operator, [descriptions componentsJoinedByString: @"\n"]];
+	return [NSString stringWithFormat: @"%@ from %lu, %lu with %@:\n%@", self.name, self.parsingRange.location, self.parsingRange.length, self.operator, [descriptions componentsJoinedByString: @"\n"]];
 }
 
 @end

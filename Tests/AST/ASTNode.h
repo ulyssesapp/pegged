@@ -8,7 +8,6 @@
 
 #import <Foundation/Foundation.h>
 
-
 @interface ASTNode : NSObject
 
 + (id)astNodeWithValue:(NSInteger)value;
@@ -22,5 +21,7 @@
 
 - (NSInteger)evaluate;
 - (NSString *)description;
+
+@property NSRange parsingRange;
 
 @end

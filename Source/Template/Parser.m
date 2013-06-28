@@ -42,6 +42,9 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 @property NSUInteger begin;
 @property NSUInteger end;
 
+// The parsed ranged used for this capture
+@property NSRange parsedRange;
+
 // The action associated with a capture
 @property (copy) ParserClassAction action;
 
@@ -294,7 +297,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 
 #pragma mark - Action handling
 
-- (void)performActionUsingCaptures:(NSInteger)captures block:(ParserClassAction)action
+- (void)performActionUsingCaptures:(NSInteger)captures startIndex:(NSInteger)startIndex block:(ParserClassAction)action
 {
     ParserClassCapture *capture = [ParserClassCapture new];
     
@@ -302,6 +305,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     capture.end = _captureEnd;
     
 	capture.action = action;
+	capture.parsedRange = NSMakeRange(startIndex, _index - startIndex);
 	
 	capture.capturedResultsCount = captures;
 
@@ -339,6 +343,11 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 - (NSArray *)allResults
 {
 	return _currentCapture.allResults;
+}
+
+- (NSRange)rangeForCurrentAction
+{
+	return _currentCapture.parsedRange;
 }
 
 
@@ -398,8 +407,6 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 			NSRange resultsRange = NSMakeRange(_actionResults.count - resultsCount, resultsCount);
 			
 			if (resultsCount) {
-				NSLog(@"%li %@ %li", _actionResults.count, _actionResults, resultsCount);
-				
 				// Read all results
 				capture.allResults = [_actionResults subarrayWithRange: resultsRange];
 				capture.nextResultIndex = 0;
@@ -409,8 +416,13 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 			}
 			
 			id result = capture.action(self, [self yyText:capture.begin to:capture.end]);
-			if (result)
+			if (result) {
+				// Set parsing range for diagnostics
+				if ([result respondsToSelector: @selector(setParsingRange:)])
+					[result setParsingRange: capture.parsedRange];
+				
 				[self pushResult: result];
+			}
 		}
 		
 		// Provide final result if any

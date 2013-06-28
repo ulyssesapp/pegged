@@ -51,17 +51,25 @@ BOOL checkValue(NSString *equation)
 	
 	NSArray  *parts			= [equation componentsSeparatedByString:@"="];
 	NSString *expression	= [parts objectAtIndex:0];
-	NSNumber *result		= [formatter numberFromString:[parts lastObject]];
+
+	NSArray *resultDescription	= [[parts lastObject] componentsSeparatedByString: @","];
+	if (resultDescription.count != 3) {
+		NSLog(@"Invalid input: %@", equation);
+		return YES;
+	}
 	
+	NSNumber *result				= [formatter numberFromString:resultDescription[0]];
+	NSNumber *parsingRangeLocation	= [formatter numberFromString:resultDescription[1]];
+	NSNumber *parsingRangeLength	= [formatter numberFromString:resultDescription[2]];
+		
 	ASTParser *parser     = [ASTParser new];
 	ASTNode *node;
 	
 	BOOL matched = [parser parseString:expression usingResult:&node];
 	
-	if (!matched || (result.integerValue != node.evaluate))
+	if (!matched || (result.integerValue != node.evaluate) || (parsingRangeLocation.integerValue != node.parsingRange.location) || (parsingRangeLength.integerValue != node.parsingRange.length))
 	{
-		NSString *output = [NSString stringWithFormat:@"%@ should result in %@. Got %@.\n", expression, result, node.description];
-		fprintf(stderr, "%s", [output UTF8String]);
+		NSLog(@"-- %@ (%li,%li) should result in %li. Got %@ (%li,%li).\n", expression, parsingRangeLocation.integerValue, parsingRangeLength.integerValue, node.evaluate, result, node.parsingRange.location, node.parsingRange.length);
 		hadError = YES;
 	}
 
@@ -85,13 +93,10 @@ int main (int argc, const char * argv[])
         NSString *contents = [[NSString alloc] initWithContentsOfFile: file
                                                              encoding: NSUTF8StringEncoding
                                                                 error: &error];
-        
-        
-        
+                
         BOOL hadError = NO;
 
-        for (NSString *equation in [contents componentsSeparatedByString:@"\n"])
-        {
+        for (NSString *equation in [contents componentsSeparatedByString:@"\n"]) {
 			if (![[equation stringByTrimmingCharactersInSet: [NSCharacterSet whitespaceCharacterSet]] length])
 				continue;
 				
@@ -100,8 +105,7 @@ int main (int argc, const char * argv[])
 			else
 				hadError |= checkValue(equation);
         }
-        
-        
+              
         
         return hadError;
     }

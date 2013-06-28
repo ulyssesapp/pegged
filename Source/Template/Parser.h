@@ -97,4 +97,25 @@ extern NSString *ParserClassErrorStringKey;
  */
 - (NSInteger)resultCount;
 
+/*!
+ @abstract Provides the range of the current action
+ */
+- (NSRange)rangeForCurrentAction;
+
+@end
+
+
+
+/*!
+ @abstract A protocol that is used to annotate diagnostic informations on parser results
+*/
+@protocol ParserClassDiagnostics <NSObject>
+
+@optional
+
+/*!
+ @abstract Sets the ranged used to create the node.
+ */
+- (void)setParsingRange:(NSRange)range;
+
 @end
