@@ -53,8 +53,9 @@
 - (void) parsedClass:(NSString *)class;
 - (void) parsedCode:(NSString *)code;
 - (void) parsedDot;
-- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing;
-- (void) parsedLiteral:(NSString *)literal;
+- (void) parsedFail:(NSString *)fail;
+- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing asserted:(BOOL)asserted;
+- (void) parsedLiteral:(NSString *)literal asserted:(BOOL)asserted;
 - (void) parsedLookAhead;
 - (void) parsedLookAhead:(NSString *)code;
 - (void) parsedNegativeLookAhead;

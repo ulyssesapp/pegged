@@ -17,6 +17,15 @@
 
 
 /*!
+ @abstract The last error state of the parser.
+ @discussion PEGParserErrorStringIndexKey provides the string index of the error (NSNumber), PEGParserErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
+ */
+@property (readonly) NSError *lastError;
+
+extern NSString *PEGParserErrorStringIndexKey;
+extern NSString *PEGParserErrorStringKey;
+
+/*!
  @abstract Parses the given string and passes the return value of the start rule as output argument.
  @discussion Returns YES on match.
  */

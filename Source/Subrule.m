@@ -21,7 +21,7 @@
 
 - (NSString *) condition
 {
-    return [NSString stringWithFormat:@"[parser matchRule: @\"%@\"]", self.rule.name];
+    return [NSString stringWithFormat:@"[parser matchRule: @\"%@\" asserted:%@]", self.rule.name, _asserted ? @"YES" : @"NO"];
 }
 
 - (NSString *)compileIfAccepted
@@ -38,13 +38,13 @@
 #pragma mark Public Methods
 //==================================================================================================
 
-+ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing
++ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted
 {
-    return [[[self class] alloc] initWithRule:rule capturing:capturing];
+    return [[[self class] alloc] initWithRule:rule capturing:capturing asserted:asserted];
 }
 
 
-- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing
+- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted
 {
     self = [super init];
     
@@ -52,6 +52,7 @@
     {
         _rule = rule;
 		_capturing = capturing;
+		_asserted = asserted;
     }
     
     return self;

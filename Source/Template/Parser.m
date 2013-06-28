@@ -20,6 +20,9 @@
 #endif
 
 
+NSString *ParserClassErrorStringIndexKey	= @"ParserClassErrorStringIndex";
+NSString *ParserClassErrorStringKey			= @"ParserClassErrorString";
+
 #pragma mark - Internal types
 
 // A block implementing a certain parsing rule
@@ -61,6 +64,9 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
  */
 @interface ParserClass ()
 {
+	// The last error state
+	NSError *_lastError;
+	
 	// The rule set used by the parser
 	NSMutableDictionary *_rules;
 	
@@ -126,6 +132,10 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 {
 	NSInteger temporaryCaptures = *localCaptures;
 	
+	// We are in an error state. Just stop.
+	if (_lastError)
+		return NO;
+	
     BOOL matched = ![self matchOneWithCaptures:&temporaryCaptures block:rule];
 	if (matched)
 		*localCaptures = temporaryCaptures;
@@ -137,6 +147,10 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 {
     NSUInteger index=_index;
 
+	// We are in an error state. Just stop.
+	if (_lastError)
+		return NO;
+	
     BOOL capturing = _capturing;
     _capturing = NO;
 	
@@ -145,6 +159,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     BOOL matched = rule(self, &temporaryCaptures);
     _capturing = capturing;
     _index=index;
+	_lastError = nil;
 	
     return matched;
 }
@@ -160,6 +175,10 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 
 - (BOOL)matchOneWithCaptures:(NSInteger *)localCaptures block:(ParserClassRule)rule
 {
+	// We are in an error state. Just stop.
+	if (_lastError)
+		return NO;
+	
     NSUInteger index=_index, captureCount=[_captures count];
 	NSInteger temporaryCaptures = *localCaptures;
 	
@@ -182,6 +201,10 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 
 - (BOOL)matchManyWithCaptures:(NSInteger *)localCaptures block:(ParserClassRule)rule
 {
+	// We are in an error state. Just stop.
+	if (_lastError)
+		return NO;
+	
 	// We need at least one match
     if (![self matchOneWithCaptures:localCaptures block:rule])
         return NO;
@@ -193,13 +216,17 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	return YES;
 }
 
-- (BOOL)matchRule:(NSString *)ruleName
+- (BOOL)matchRule:(NSString *)ruleName asserted:(BOOL)asserted
 {
     NSArray *rules = [_rules objectForKey: ruleName];
+
+	// We are in an error state. Just stop.
+	if (_lastError)
+		return NO;
     
 	if (![rules count])
         NSLog(@"Couldn't find rule name \"%@\".", ruleName);
-		
+	
 	for (ParserClassRule rule in rules) {
 		NSInteger localCaptures = 0;
 		
@@ -207,26 +234,29 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 			return YES;
 	}
 
+	if (asserted)
+		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName]];
+	
     return NO;
 }
 
-- (BOOL)matchString:(char *)s
+- (BOOL)matchString:(char *)literal asserted:(BOOL)asserted
 {
 	NSInteger saved = _index;
 
-	while (*s) {
-		if (_index >= _limit) return NO;
-		if (_cstring[_index] != *s)
-		{
+	while (*literal) {
+		if ((_index >= _limit) || (_cstring[_index] != *literal)) {
 			_index = saved;
-			yyprintf(@"  fail matchString '%s'", s);
+			
+			if (asserted)
+				[self setErrorWithMessage: [NSString stringWithFormat: @"Missing:%s", literal]];
+			
 			return NO;
 		}
-		++s;
+		++literal;
 		++_index;
 	}
 
-    yyprintf(@"  ok   matchString '%s'", s);
     return YES;
 }
 
@@ -244,6 +274,17 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	
     yyprintf(@"  fail matchClass");
     return NO;
+}
+
+- (void)setErrorWithMessage:(NSString *)message
+{
+	if (!_lastError)
+		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: message, ParserClassErrorStringIndexKey: @(_index), ParserClassErrorStringKey: _string}];;
+}
+
+- (void)clearError
+{
+	_lastError = nil;
 }
 
 
@@ -342,7 +383,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
     _capturing = YES;
     
 	// Do string matching
-    BOOL matched = [self matchRule: @"$StartRule"];
+    BOOL matched = [self matchRule: @"$StartRule" asserted:YES];
     
 	// Process actions
     if (matched) {

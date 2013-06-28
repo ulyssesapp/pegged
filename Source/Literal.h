@@ -15,12 +15,13 @@
     NSString *_string;
     
     BOOL _caseInsensitive;
+	BOOL _asserted;
 }
 
 @property (assign) BOOL caseInsensitive;
 @property (readonly) NSString *string;
 
-+ (id) literalWithString:(NSString *)string;
-- (id) initWithString:(NSString *)string;
++ (id) literalWithString:(NSString *)string asserted:(BOOL)asserted;
+- (id) initWithString:(NSString *)string asserted:(BOOL)asserted;
 
 @end

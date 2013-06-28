@@ -14,6 +14,7 @@
 #import "Condition.h"
 #import "Dot.h"
 #import "Expression.h"
+#import "Fail.h"
 #import "Literal.h"
 #import "LookAhead.h"
 #import "Node.h"
@@ -208,6 +209,10 @@
     [_stack addObject:[Action actionWithCode:code returnValue:returnValue]];
 }
 
+- (void)parsedFail:(NSString *)string
+{
+	[_stack addObject:[Fail failWithMessage: string]];
+}
 
 - (void) parsedAlternate
 {
@@ -249,7 +254,7 @@
 }
 
 
-- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing
+- (void) parsedIdentifier:(NSString *)identifier capturing:(BOOL)capturing asserted:(BOOL)asserted
 {
     Rule *rule = [_rules objectForKey:identifier];
     if (!rule)
@@ -258,14 +263,14 @@
         [_rules setObject:rule forKey:identifier];
     }
     
-    [_stack addObject:[Subrule subruleWithRule:rule capturing:capturing]];
+    [_stack addObject:[Subrule subruleWithRule:rule capturing:capturing asserted:asserted]];
     rule.used = YES;
 }
 
 
-- (void) parsedLiteral:(NSString *)literal
+- (void) parsedLiteral:(NSString *)literal asserted:(BOOL)asserted
 {
-    Literal *node = [Literal literalWithString:literal];
+    Literal *node = [Literal literalWithString:literal asserted:asserted];
     node.caseInsensitive = self.caseInsensitive;
     [_stack addObject:node];
 }

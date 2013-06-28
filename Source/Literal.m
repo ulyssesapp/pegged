@@ -22,7 +22,7 @@
 - (NSString *) condition
 {
     NSString *string = self.caseInsensitive ? [self.string lowercaseString] : self.string;
-    return [NSString stringWithFormat:@"[parser matchString: \"%@\"]", string];
+    return [NSString stringWithFormat:@"[parser matchString: \"%@\" asserted:%@]", string, _asserted ? @"YES" : @"NO"];
 }
 
 
@@ -31,19 +31,20 @@
 #pragma mark Public Methods
 //==================================================================================================
 
-+ (id) literalWithString:(NSString *)string
++ (id) literalWithString:(NSString *)string asserted:(BOOL)asserted
 {
-    return [[[self class] alloc] initWithString:string];
+    return [[[self class] alloc] initWithString:string asserted:asserted];
 }
 
 
-- (id) initWithString:(NSString *)string
+- (id) initWithString:(NSString *)string asserted:(BOOL)asserted
 {
     self = [super init];
     
     if (self)
     {
         _string = [string copy];
+		_asserted = asserted;
     }
     
     return self;

@@ -16,11 +16,12 @@
 {
     Rule *_rule;
 	BOOL _capturing;
+	BOOL _asserted;
 }
 
 @property (strong) Rule *rule;
 
-+ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing;
-- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing;
++ (id) subruleWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted;
+- (id) initWithRule:(Rule *)rule capturing:(BOOL)capturing asserted:(BOOL)asserted;
 
 @end

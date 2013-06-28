@@ -11,11 +11,70 @@
 #import "ASTNode.h"
 #import "ASTParser.h"
 
+BOOL checkError(NSString *equation)
+{
+	BOOL hadError = NO;
+	
+	NSNumberFormatter *formatter = [NSNumberFormatter new];
+	
+	NSArray  *parts			= [equation componentsSeparatedByString:@"="];
+	NSString *expression	= [parts objectAtIndex:0];
+	
+	NSArray *expectedError			= [[parts lastObject] componentsSeparatedByString: @","];
+	if (expectedError.count != 2)
+		return NO;
+
+	NSString *expectedErrorName		= [expectedError[0] stringByTrimmingCharactersInSet: [NSCharacterSet whitespaceCharacterSet]];
+	NSNumber *expectedErrorIndex	= [formatter numberFromString:expectedError[1]];
+	
+	ASTParser *parser     = [ASTParser new];
+	ASTNode *node;
+	
+	BOOL matched = [parser parseString:expression usingResult:&node];
+	
+	if (matched || ![parser.lastError.localizedDescription isEqual: expectedErrorName] || ![parser.lastError.userInfo[ASTParserErrorStringIndexKey] isEqual: expectedErrorIndex]) {
+		NSLog(@"Expected error: '%@' at %@. Got '%@' at %@.", expectedErrorName, expectedErrorIndex, parser.lastError.localizedDescription, parser.lastError.userInfo[ASTParserErrorStringIndexKey]);
+		hadError = YES;
+	}
+
+	return hadError;
+}
+
+BOOL checkValue(NSString *equation)
+{
+	BOOL hadError = NO;
+	
+	NSNumberFormatter *formatter = [NSNumberFormatter new];
+	
+	NSArray  *parts			= [equation componentsSeparatedByString:@"="];
+	NSString *expression	= [parts objectAtIndex:0];
+	NSNumber *result		= [formatter numberFromString:[parts lastObject]];
+	
+	ASTParser *parser     = [ASTParser new];
+	ASTNode *node;
+	
+	BOOL matched = [parser parseString:expression usingResult:&node];
+	
+	if (!matched || (result.integerValue != node.evaluate))
+	{
+		NSString *output = [NSString stringWithFormat:@"%@ should result in %@. Got %@.\n", expression, result, node.description];
+		fprintf(stderr, "%s", [output UTF8String]);
+		hadError = YES;
+	}
+
+	return hadError;
+}
+
 int main (int argc, const char * argv[])
 {
-    if (argc != 2)
+    if (argc < 2)
         return 1;
-    
+	
+	if (argc > 3)
+		return 1;
+	
+	BOOL matchErrors = (argc == 3) && !strcmp(argv[2], "-e");
+
     @autoreleasepool {
     
         NSError *error = nil;
@@ -24,28 +83,16 @@ int main (int argc, const char * argv[])
                                                              encoding: NSUTF8StringEncoding
                                                                 error: &error];
         
-        NSNumberFormatter *formatter = [NSNumberFormatter new];
+        
         
         BOOL hadError = NO;
-        NSUInteger line = 1;
+
         for (NSString *equation in [contents componentsSeparatedByString:@"\n"])
         {
-            NSArray  *parts      = [equation componentsSeparatedByString:@"="];
-            NSString *expression = [parts objectAtIndex:0];
-            NSNumber *result     = [formatter numberFromString:[parts lastObject]];
-            
-            ASTParser *parser     = [ASTParser new];
-			ASTNode *node;
-
-            BOOL matched = [parser parseString:expression usingResult:&node];
-
-            if (!matched || (result.integerValue != node.evaluate))
-            {
-                NSString *output = [NSString stringWithFormat:@"%@:%lu: error: %@!=%@ (== %@)\n", file, line, expression, result, node.description];
-                fprintf(stderr, "%s", [output UTF8String]);
-                hadError = YES;
-            }
-            line++;
+            if (matchErrors)
+				hadError |= checkError(equation);
+			else
+				hadError |= checkValue(equation);
         }
         
         

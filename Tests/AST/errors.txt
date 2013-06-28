@@ -1,0 +1,8 @@
+5 + 4 + = UnmatchedAdditiveExpression, 8
+5 + 4 * = UnmatchedMultiplicativeExpression, 8
+2 ++ 3 = UnmatchedAdditiveExpression , 3
+x = InvalidExpression, 0
+  x = InvalidExpression, 2
+[ 3 = Missing:],4
+[ 3, 9+1 = Missing:],9
+(8*(2+1) = Missing:),9

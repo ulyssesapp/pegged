@@ -29,6 +29,7 @@
 		7988067D177C94D70003B729 /* Parser.m in Sources */ = {isa = PBXBuildFile; fileRef = 7988067C177C94D70003B729 /* Parser.m */; };
 		79880680177CE7E80003B729 /* NSString+PrettyPrinting.m in Sources */ = {isa = PBXBuildFile; fileRef = 7988067F177CE7E70003B729 /* NSString+PrettyPrinting.m */; };
 		79880681177CF3D40003B729 /* NSString+PrettyPrinting.m in Sources */ = {isa = PBXBuildFile; fileRef = 7988067F177CE7E70003B729 /* NSString+PrettyPrinting.m */; };
+		79880685177D0A9D0003B729 /* Fail.m in Sources */ = {isa = PBXBuildFile; fileRef = 79880684177D0A9B0003B729 /* Fail.m */; };
 		8DD76F9A0486AA7600D96B5E /* pegged.m in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* pegged.m */; settings = {ATTRIBUTES = (); }; };
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
 		8DD76F9F0486AA7600D96B5E /* pegged.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6859EA3029092ED04C91782 /* pegged.1 */; };
@@ -163,6 +164,9 @@
 		7988067C177C94D70003B729 /* Parser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Parser.m; sourceTree = "<group>"; };
 		7988067E177CE7E60003B729 /* NSString+PrettyPrinting.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSString+PrettyPrinting.h"; sourceTree = "<group>"; };
 		7988067F177CE7E70003B729 /* NSString+PrettyPrinting.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSString+PrettyPrinting.m"; sourceTree = "<group>"; };
+		79880682177D017D0003B729 /* errors.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = errors.txt; sourceTree = "<group>"; };
+		79880683177D0A9A0003B729 /* Fail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Fail.h; sourceTree = "<group>"; };
+		79880684177D0A9B0003B729 /* Fail.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Fail.m; sourceTree = "<group>"; };
 		8DD76FA10486AA7600D96B5E /* pegged */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pegged; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE3FF57710EDF8000020AEB9 /* Subrule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Subrule.h; sourceTree = "<group>"; };
 		BE3FF57810EDF8000020AEB9 /* Subrule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Subrule.m; sourceTree = "<group>"; };
@@ -280,6 +284,8 @@
 				BE3FF57810EDF8000020AEB9 /* Subrule.m */,
 				BE96300210EAE93D007629F6 /* Action.h */,
 				BE96300310EAE93D007629F6 /* Action.m */,
+				79880683177D0A9A0003B729 /* Fail.h */,
+				79880684177D0A9B0003B729 /* Fail.m */,
 				BE96301B10EAEE98007629F6 /* CClass.h */,
 				BE96301C10EAEE98007629F6 /* CClass.m */,
 				BECEF82410DC1F4F0067BA1E /* Compiler.h */,
@@ -336,6 +342,7 @@
 				79880670177C7B1B0003B729 /* ASTParser.peg */,
 				79880671177C7B1B0003B729 /* ASTNode.h */,
 				79880672177C7B1B0003B729 /* ASTNode.m */,
+				79880682177D017D0003B729 /* errors.txt */,
 				79880673177C7B1B0003B729 /* equations.txt */,
 				79880674177C7B1B0003B729 /* main.m */,
 			);
@@ -401,6 +408,7 @@
 				79880664177C7AF60003B729 /* Sources */,
 				79880668177C7AF60003B729 /* Frameworks */,
 				7988066A177C7AF60003B729 /* ShellScript */,
+				79880686177D0D510003B729 /* ShellScript */,
 			);
 			buildRules = (
 				7988066B177C7AF60003B729 /* PBXBuildRule */,
@@ -509,7 +517,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${TARGET_BUILD_DIR}/${EXECUTABLE_NAME}\" \"${PROJECT_DIR}/Tests/AST/equations.txt\"";
+			shellScript = "\"${TARGET_BUILD_DIR}/${EXECUTABLE_NAME}\" \"${PROJECT_DIR}/Tests/AST/equations.txt\"\n";
+		};
+		79880686177D0D510003B729 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${TARGET_BUILD_DIR}/${EXECUTABLE_NAME}\" \"${PROJECT_DIR}/Tests/AST/errors.txt\" -e";
 		};
 		BE94313510F8315100FA4E0A /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -576,6 +597,7 @@
 				BE94329B10FA6A0500FA4E0A /* Property.m in Sources */,
 				7988067D177C94D70003B729 /* Parser.m in Sources */,
 				79880680177CE7E80003B729 /* NSString+PrettyPrinting.m in Sources */,
+				79880685177D0A9D0003B729 /* Fail.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
