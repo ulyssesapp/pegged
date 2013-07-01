@@ -71,7 +71,7 @@
 				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).h",
 				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).m",
 			);
-			script = "${BUILT_PRODUCTS_DIR}/pegged --output-dir ${DERIVED_FILE_DIR} ${INPUT_FILE_PATH}";
+			script = "${BUILT_PRODUCTS_DIR}/pegged --output-dir \"$DERIVED_FILE_DIR\" \"$INPUT_FILE_PATH\"";
 		};
 		BE3FF92E10F0ED4B0020AEB9 /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
@@ -83,7 +83,7 @@
 				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).h",
 				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).m",
 			);
-			script = "${BUILT_PRODUCTS_DIR}/pegged --output-dir ${DERIVED_FILE_DIR} ${INPUT_FILE_PATH}";
+			script = "${BUILT_PRODUCTS_DIR}/pegged --output-dir \"$DERIVED_FILE_DIR\" \"$INPUT_FILE_PATH\"";
 		};
 		BE94313610F8315100FA4E0A /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
@@ -95,7 +95,7 @@
 				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).h",
 				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).m",
 			);
-			script = "${BUILT_PRODUCTS_DIR}/pegged --output-dir ${DERIVED_FILE_DIR} ${INPUT_FILE_PATH}";
+			script = "${BUILT_PRODUCTS_DIR}/pegged --output-dir \"$DERIVED_FILE_DIR\" \"$INPUT_FILE_PATH\"";
 		};
 /* End PBXBuildRule section */
 
