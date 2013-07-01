@@ -74,4 +74,9 @@
 	return [NSString stringWithFormat: @"%@ from %lu, %lu with %@:\n%@", self.name, self.parsingRange.location, self.parsingRange.length, self.operator, [descriptions componentsJoinedByString: @"\n"]];
 }
 
+- (void)setSourceString:(NSString *)string range:(NSRange)range context:(NSDictionary *)context
+{
+	_parsingRange = range;
+}
+
 @end
