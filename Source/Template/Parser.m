@@ -330,7 +330,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 
 - (id)nextResultOrNil
 {
-	if (_currentCapture.allResults.count >= _currentCapture.nextResultIndex)
+	if (_currentCapture.allResults.count <= _currentCapture.nextResultIndex)
 		return nil;
 	
 	return [self nextResult];

@@ -260,6 +260,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	
 	// Match others
 	NSInteger lastIndex = _index;
+	
     while ([self matchOneWithCaptures:localCaptures startIndex:startIndex block:rule]) {
 		// The match did not consume any string, but matched. It should be something like (.*)*. So we can stop to prevent an infinite loop.
 		if (_index == lastIndex)
@@ -378,7 +379,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 
 - (id)nextResultOrNil
 {
-	if (_currentCapture.allResults.count >= _currentCapture.nextResultIndex)
+	if (_currentCapture.allResults.count <= _currentCapture.nextResultIndex)
 		return nil;
 	
 	return [self nextResult];
