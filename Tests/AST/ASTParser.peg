@@ -1,5 +1,9 @@
 @import "ASTNode.h";
 
+@import <stdio.h>;
+
+@property (nonatomic) NSString *foo;
+
 Equation					<- _ (%Expression / @!InvalidExpression) _ EndOfFile										^{ return [self nextResult]; }
 
 Expression					<- _ (AdditiveExpression / ListExpression) _
