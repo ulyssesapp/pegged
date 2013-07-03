@@ -14,9 +14,9 @@
 #define ParserClassLocalizedString(__key)	(NSLocalizedStringFromTableInBundle((__key), NSStringFromClass(self.class), [NSBundle bundleForClass: self.class], nil))
 
 NSString *ParserClassErrorStringLocationKey		= @"ParserClassErrorStringLocation";
-NSString *ParserClassErrorTypeKey				= @"ParserClassErrorType";
 NSString *ParserClassErrorStringLengthKey		= @"ParserClassErrorStringLength";
 NSString *ParserClassErrorStringKey				= @"ParserClassErrorString";
+NSString *ParserClassErrorTypeKey				= @"ParserClassErrorType";
 
 #pragma mark - Internal types
 

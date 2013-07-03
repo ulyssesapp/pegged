@@ -15,15 +15,39 @@
 @property (strong) Compiler *compiler;
 
 
+
+#pragma mark - Error handling
+
 /*!
  @abstract The last error state of the parser.
- @discussion PEGParserErrorStringLocationKey, PEGParserErrorStringLengthKey provides the index and length of the errorneous string (NSNumber), PEGParserErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
+ @discussion PEGParserErrorStringLocationKey, PEGParserErrorStringLengthKey provides the index and length of the errorneous string (NSNumber), PEGParserErrorStringKey the errorneous string. PEGParserErrorTypeKey contains a grammar-dependent error key. The localized description of the error will be generated from the string file of the PEGParser, whereas the PEGParserErrorTypeKey will be used as localization string key.
  */
 @property (readonly) NSError *lastError;
 
+/*!
+ @abstract The location of the substring that caused the last error
+ */
 extern NSString *PEGParserErrorStringLocationKey;
+
+/*!
+ @abstract The length of the substring that caused the last error
+ */
 extern NSString *PEGParserErrorStringLengthKey;
+
+/*!
+ @abstract The string that caused the error.
+ @discussion Use PEGParserErrorStringLocationKey, PEGParserErrorStringLengthKey to derive the errorneous substring.
+ */
 extern NSString *PEGParserErrorStringKey;
+
+/*!
+ @abstract A grammar dependent error type.
+ @discussion Will be used to generate a NSLocalizedErrorDescriptionKey by using this error type as key in the strng file of PEGParser.
+ */
+extern NSString *PEGParserErrorTypeKey;
+
+
+#pragma mark - Parsing methods
 
 /*!
  @abstract Parses the given string and passes the return value of the start rule as output argument.

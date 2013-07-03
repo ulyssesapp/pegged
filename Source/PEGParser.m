@@ -14,9 +14,9 @@
 #define PEGParserLocalizedString(__key)	(NSLocalizedStringFromTableInBundle((__key), NSStringFromClass(self.class), [NSBundle bundleForClass: self.class], nil))
 
 NSString *PEGParserErrorStringLocationKey		= @"PEGParserErrorStringLocation";
-NSString *PEGParserErrorTypeKey				= @"PEGParserErrorType";
 NSString *PEGParserErrorStringLengthKey		= @"PEGParserErrorStringLength";
 NSString *PEGParserErrorStringKey				= @"PEGParserErrorString";
+NSString *PEGParserErrorTypeKey				= @"PEGParserErrorType";
 
 #pragma mark - Internal types
 

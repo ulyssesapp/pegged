@@ -13,15 +13,39 @@
 
 //!$Properties
 
+
+#pragma mark - Error handling
+
 /*!
  @abstract The last error state of the parser.
- @discussion ParserClassErrorStringLocationKey, ParserClassErrorStringLengthKey provides the index and length of the errorneous string (NSNumber), ParserClassErrorStringKey the key of the error. The NSLocalizedDescription will be set to "Unmatched<Rulename>".
+ @discussion ParserClassErrorStringLocationKey, ParserClassErrorStringLengthKey provides the index and length of the errorneous string (NSNumber), ParserClassErrorStringKey the errorneous string. ParserClassErrorTypeKey contains a grammar-dependent error key. The localized description of the error will be generated from the string file of the ParserClass, whereas the ParserClassErrorTypeKey will be used as localization string key.
  */
 @property (readonly) NSError *lastError;
 
+/*!
+ @abstract The location of the substring that caused the last error
+ */
 extern NSString *ParserClassErrorStringLocationKey;
+
+/*!
+ @abstract The length of the substring that caused the last error
+ */
 extern NSString *ParserClassErrorStringLengthKey;
+
+/*!
+ @abstract The string that caused the error.
+ @discussion Use ParserClassErrorStringLocationKey, ParserClassErrorStringLengthKey to derive the errorneous substring.
+ */
 extern NSString *ParserClassErrorStringKey;
+
+/*!
+ @abstract A grammar dependent error type.
+ @discussion Will be used to generate a NSLocalizedErrorDescriptionKey by using this error type as key in the strng file of ParserClass.
+ */
+extern NSString *ParserClassErrorTypeKey;
+
+
+#pragma mark - Parsing methods
 
 /*!
  @abstract Parses the given string and passes the return value of the start rule as output argument.
