@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PEGParserLocalizedString(__key)	(NSLocalizedStringFromTableInBundle((__key), NSStringFromClass(self.class), [NSBundle bundleForClass: self.class], nil))
+
 NSString *PEGParserErrorStringLocationKey		= @"PEGParserErrorStringLocation";
 NSString *PEGParserErrorStringLengthKey		= @"PEGParserErrorStringLength";
 NSString *PEGParserErrorStringKey				= @"PEGParserErrorString";
@@ -329,7 +331,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 - (void)setErrorWithMessage:(NSString *)message location:(NSInteger)location length:(NSInteger)length
 {
 	if (!_lastError)
-		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: message, PEGParserErrorStringLocationKey: @(location), PEGParserErrorStringLengthKey: @(length), PEGParserErrorStringKey: [_string copy]}];
+		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: PEGParserLocalizedString(message), PEGParserErrorStringLocationKey: @(location), PEGParserErrorStringLengthKey: @(length), PEGParserErrorStringKey: [_string copy]}];
 }
 
 - (void)clearError
