@@ -14,6 +14,7 @@
 #define ParserClassLocalizedString(__key)	(NSLocalizedStringFromTableInBundle((__key), NSStringFromClass(self.class), [NSBundle bundleForClass: self.class], nil))
 
 NSString *ParserClassErrorStringLocationKey		= @"ParserClassErrorStringLocation";
+NSString *ParserClassErrorTypeKey				= @"ParserClassErrorType";
 NSString *ParserClassErrorStringLengthKey		= @"ParserClassErrorStringLength";
 NSString *ParserClassErrorStringKey				= @"ParserClassErrorString";
 
@@ -282,7 +283,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 - (void)setErrorWithMessage:(NSString *)message location:(NSInteger)location length:(NSInteger)length
 {
 	if (!_lastError)
-		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: ParserClassLocalizedString(message), ParserClassErrorStringLocationKey: @(location), ParserClassErrorStringLengthKey: @(length), ParserClassErrorStringKey: [_string copy]}];
+		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: ParserClassLocalizedString(message), ParserClassErrorTypeKey: message, ParserClassErrorStringLocationKey: @(location), ParserClassErrorStringLengthKey: @(length), ParserClassErrorStringKey: [_string copy]}];
 }
 
 - (void)clearError
