@@ -323,6 +323,14 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	return [_currentCapture.allResults objectAtIndex: index];
 }
 
+- (id)resultAtIndexIfAny:(NSInteger)index
+{
+	if (index > _currentCapture.allResults.count)
+		return nil;
+	
+	return [self resultAtIndex: index];
+}
+
 - (NSInteger)resultCount
 {
 	return _currentCapture.capturedResultsCount;

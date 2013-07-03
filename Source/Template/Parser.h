@@ -85,6 +85,11 @@ extern NSString *ParserClassErrorStringKey;
 - (id)resultAtIndex:(NSInteger)index;
 
 /*!
+ @abstract Accesses the result of a sub-rule with a certain index. If the result does not exist, nil is returned.
+ */
+- (id)resultAtIndexIfAny:(NSInteger)index;
+
+/*!
  @abstract Provies all sub-rule results as array.
  */
 - (NSArray *)allResults;

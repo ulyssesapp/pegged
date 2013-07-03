@@ -372,6 +372,14 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	return [_currentCapture.allResults objectAtIndex: index];
 }
 
+- (id)resultAtIndexIfAny:(NSInteger)index
+{
+	if (index > _currentCapture.allResults.count)
+		return nil;
+	
+	return [self resultAtIndex: index];
+}
+
 - (NSInteger)resultCount
 {
 	return _currentCapture.capturedResultsCount;
@@ -762,6 +770,13 @@ static PEGParserRule __Declaration = ^(PEGParser *parser, NSInteger startIndex, 
 	
 		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 			if (![parser matchRule: @"ExtraCode" startIndex:startIndex asserted:NO])
+				return NO;
+			return YES;
+		}])
+			return YES;
+	
+		if ([parser matchOneWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
+			if (![parser matchRule: @"Spacing" startIndex:startIndex asserted:NO])
 				return NO;
 			return YES;
 		}])
