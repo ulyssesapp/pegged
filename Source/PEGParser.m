@@ -1078,7 +1078,7 @@ static PEGParserRule __GlobalImportIdentifier = ^(PEGParser *parser, NSInteger s
 	
 	if (![parser matchManyWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
 		if (![parser lookAheadWithCaptures:localCaptures startIndex:startIndex block:^(PEGParser *parser, NSInteger startIndex, NSInteger *localCaptures) {
-			if ([parser matchString:"<" startIndex:startIndex asserted:NO])
+			if ([parser matchString:">" startIndex:startIndex asserted:NO])
 				return NO;
 		
 			return YES;

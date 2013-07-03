@@ -108,7 +108,7 @@ ExtraCode  <- '%%' < [^%]* > '%%' { [self.compiler parsedExtraCode: text]; }
 
 ImportIdentifier <- LocalImportIdentifier / GlobalImportIdentifier
 LocalImportIdentifier <- < '\"' ( !'\"' . )+ '\"' >
-GlobalImportIdentifier <- < '<' ( !'<' . )+ '>' >
+GlobalImportIdentifier <- < '<' ( !'>' . )+ '>' >
 					
 PropIdentifier <- < IdentStart IdentCont* > HorizSpace*
 PropParamaters <- < '(' [^)]+ ')' > HorizSpace+
