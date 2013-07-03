@@ -99,6 +99,12 @@ extern NSString *ParserClassErrorTypeKey;
 - (id)nextResult;
 
 /*!
+ @abstract Accesses the next result of a sub-rule, if a certain result count matches.
+ @discussion Returns nil otherwise.
+ */
+- (id)nextResultIfCount:(NSInteger)count;
+
+/*!
  @abstract Accesses the next result of a sub-rule. Returns nil, if none is available
  */
 - (id)nextResultOrNil;

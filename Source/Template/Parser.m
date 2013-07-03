@@ -211,6 +211,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 	
 	// Match others
 	NSInteger lastIndex = _index;
+	
     while ([self matchOneWithCaptures:localCaptures startIndex:startIndex block:rule]) {
 		// The match did not consume any string, but matched. It should be something like (.*)*. So we can stop to prevent an infinite loop.
 		if (_index == lastIndex)
@@ -317,6 +318,14 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 - (id)nextResult
 {
 	return [_currentCapture.allResults objectAtIndex: _currentCapture.nextResultIndex++];
+}
+
+- (id)nextResultIfCount:(NSInteger)count
+{
+	if (_currentCapture.allResults.count == count)
+		return [self nextResult];
+	
+	return nil;
 }
 
 - (id)nextResultOrNil
