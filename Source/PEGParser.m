@@ -396,7 +396,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 
 - (NSArray *)allResults
 {
-	return _currentCapture.allResults;
+	return _currentCapture.allResults ?: @[];
 }
 
 - (NSRange)rangeForCurrentAction
