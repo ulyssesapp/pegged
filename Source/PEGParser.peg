@@ -22,6 +22,7 @@ Declaration <- OPTION "case-insensitive" HorizSpace* EndOfDecl { self.compiler.c
                         < '*'* > HorizSpace*     { [self.compiler parsedPropertyStars:text]; }
                         PropIdentifier EndOfDecl { [self.compiler parsedPropertyName:text]; }
              / ExtraCode
+			 / Spacing
 
 Definition <- Identifier { [self.compiler startRule:text]; }
                 LEFTARROW Expression { [self.compiler parsedRule]; }
