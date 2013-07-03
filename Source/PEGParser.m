@@ -368,6 +368,14 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text);
 	return [_currentCapture.allResults objectAtIndex: _currentCapture.nextResultIndex++];
 }
 
+- (id)nextResultIfCount:(NSInteger)count
+{
+	if (_currentCapture.allResults.count == count)
+		return [self nextResult];
+	
+	return nil;
+}
+
 - (id)nextResultOrNil
 {
 	if (_currentCapture.allResults.count >= _currentCapture.nextResultIndex)
