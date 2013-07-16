@@ -40,7 +40,7 @@
     NSMutableString *code = [NSMutableString string];
     
     if (self.inverted)
-        [code appendFormat:@"[parser invertWithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", parserClassName];
+        [code appendFormat:@"return [parser invertWithCaptures:localCaptures startIndex:startIndex block:^(%@ *parser, NSInteger startIndex, NSInteger *localCaptures) {\n", parserClassName];
     
     for (Node *node in self.nodes) {
         [code appendString:[[[node compile:parserClassName] stringByAddingIndentationWithCount: (self.inverted ? 1 : 0)] stringByRemovingTrailingWhitespace]];
