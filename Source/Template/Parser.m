@@ -24,7 +24,7 @@ NSString *ParserClassErrorTypeKey				= @"ParserClassErrorType";
 typedef BOOL (^ParserClassRule)(ParserClass *parser, NSInteger startIndex, NSInteger *localCaptures);
 
 // A block implementing a certain parser action
-typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
+typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **errorCode);
 
 
 /*!
@@ -433,7 +433,18 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 				[_actionResults removeObjectsInRange: resultsRange];
 			}
 			
-			id result = capture.action(self, [self yyText:capture.begin to:capture.end]);
+			NSString *errorCode;
+			
+			id result = capture.action(self, [self yyText:capture.begin to:capture.end], &errorCode);
+			
+			// Handle errors if any
+			if (errorCode) {
+				[self setErrorWithMessage:errorCode location:capture.parsedRange.location length:capture.parsedRange.length];
+				matched = NO;
+				break;
+			}
+			
+			// Push result
 			if (result) {
 				// Set parsing range for diagnostics
 				if ([result respondsToSelector: @selector(setSourceString:range:context:)])
@@ -444,7 +455,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text);
 		}
 		
 		// Provide final result if any
-		if (_actionResults.count)
+		if (matched && _actionResults.count)
 			if (result) *result = _actionResults.lastObject;
 	}
 	
