@@ -10,6 +10,8 @@
 # 
 
 @import "Compiler.h";
+@class Compiler;
+
 @property (strong) Compiler *compiler;
 
 # Hierarchical syntax
@@ -17,6 +19,8 @@ Grammar <- Spacing Declaration* Spacing Definition+ EndOfFile
 
 Declaration <- OPTION "case-insensitive" HorizSpace* EndOfDecl { self.compiler.caseInsensitive = YES; }
 			 / IMPORT ImportIdentifier HorizSpace* EndOfDecl { [self.compiler parsedImport:text]; }
+			 / CLASSDECL ClassIdentifier HorizSpace* EndOfDecl { [self.compiler parsedClassPrototype: text]; }
+			 / PROTOCOLDECL ClassIdentifier HorizSpace* EndOfDecl { [self.compiler parsedProtocolPrototype: text]; }
              / PROPERTY (PropParamaters { [self.compiler parsedPropertyParameters:text]; })?
                         PropIdentifier           { [self.compiler parsedPropertyType:text]; }
                         < '*'* > HorizSpace*     { [self.compiler parsedPropertyStars:text]; }
@@ -94,6 +98,8 @@ EndOfFile  <- !.
 OPTION     <- '@option' HorizSpace+
 PROPERTY   <- '@property' HorizSpace+
 IMPORT	   <- '@import' HorizSpace*
+CLASSDECL		<- '@class' HorizSpace+
+PROTOCOLDECL	<- '@protocol' HorizSpace+
 BEGIN      <- '<' Spacing
 END        <- '>' Spacing
 
@@ -110,6 +116,10 @@ ImportIdentifier <- LocalImportIdentifier / GlobalImportIdentifier
 LocalImportIdentifier <- < '\"' ( !'\"' . )+ '\"' >
 GlobalImportIdentifier <- < '<' ( !'>' . )+ '>' >
 					
-PropIdentifier <- < IdentStart IdentCont* > HorizSpace*
+PropIdentifier <- < IdentStart IdentCont* ProtocolIdent? > HorizSpace*
 PropParamaters <- < '(' [^)]+ ')' > HorizSpace+
+ProtocolIdent  <- '<' HorizSpace* IdentStart IdentCont* (HorizSpace* ',' HorizSpace* IdentStart IdentCont*)* HorizSpace* '>'
+
+ClassIdentifier <- < IdentStart IdentCont* > HorizSpace*
+					
 EndOfDecl  <- ';' HorizSpace* (EndOfLine / Comment) 

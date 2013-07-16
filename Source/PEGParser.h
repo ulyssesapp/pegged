@@ -6,7 +6,6 @@
 
 @class Compiler;
 
-
 /*!
  @abstract The PEGParser public interface
  */

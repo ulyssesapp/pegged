@@ -5,6 +5,7 @@
 //
 
 //!$OtherClasses
+//!$OtherProtocols
 
 /*!
  @abstract The ParserClass public interface

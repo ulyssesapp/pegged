@@ -41,6 +41,8 @@
         _rules      = [NSMutableDictionary new];
         _properties = [NSMutableArray new];
 		_imports	= [NSMutableArray new];
+		_classes	= [NSMutableArray new];
+		_protocols  = [NSMutableArray new];
         _extraCode  = nil;
     }
     
@@ -74,14 +76,12 @@
     NSError *error = nil;
     
     NSMutableString *properties  = [NSMutableString new];
-    NSMutableString *classes     = [NSMutableString new];
     NSMutableString *imports     = [NSMutableString new];
     NSMutableString *synthesizes = [NSMutableString new];
     NSMutableString *variables   = [NSMutableString new];
     for (Property *property in _properties)
     {
         [properties  appendString:[property property]];
-        [classes     appendString:[property declaration]];
         [synthesizes appendString:[property synthesize]];
         [variables   appendString:[property variable]];
     }
@@ -94,7 +94,17 @@
 	[header replaceOccurrencesOfString:@"//!$" withString:@"$" options:0 range:NSMakeRange(0, header.length)];
 	[header replaceOccurrencesOfString:@"ParserClass" withString:self.className options:0 range:NSMakeRange(0, header.length)];
 	[header replaceOccurrencesOfString:@"$Version" withString:[NSString stringWithFormat: @"%lu.%lu.%lu", PEGGED_VERSION_MAJOR, PEGGED_VERSION_MINOR, PEGGED_VERSION_CHANGE] options:0 range:NSMakeRange(0, header.length)];
-	[header replaceOccurrencesOfString:@"$OtherClasses" withString:classes options:0 range:NSMakeRange(0, header.length)];
+
+	if (_classes.count)
+		[header replaceOccurrencesOfString:@"$OtherClasses" withString:[NSString stringWithFormat: @"@class %@;", [_classes componentsJoinedByString: @", "]] options:0 range:NSMakeRange(0, header.length)];
+	else
+		[header replaceOccurrencesOfString:@"$OtherClasses\n" withString:@"" options:0 range:NSMakeRange(0, header.length)];
+		
+	if (_protocols.count)
+		[header replaceOccurrencesOfString:@"$OtherProtocols" withString:[NSString stringWithFormat: @"@protocol %@;", [_protocols componentsJoinedByString: @", "]] options:0 range:NSMakeRange(0, header.length)];
+	else
+		[header replaceOccurrencesOfString:@"$OtherProtocols\n" withString:@"" options:0 range:NSMakeRange(0, header.length)];
+	
 	[header replaceOccurrencesOfString:@"$Properties" withString:properties options:0 range:NSMakeRange(0, header.length)];
 	
     [header writeToFile:self.headerPath atomically:NO encoding:NSUTF8StringEncoding error:&error];
@@ -359,6 +369,16 @@
 	[_imports addObject: [NSString stringWithFormat:@"#import %@", import]];
 }
 
+- (void)parsedClassPrototype:(NSString *)classIdentifier
+{
+	[_classes addObject: classIdentifier];
+}
+
+- (void)parsedProtocolPrototype:(NSString *)protocolIdentifier
+{
+	[_protocols addObject: protocolIdentifier];
+}
+
 - (void)parsedPropertyParameters:(NSString *)parameters
 {
     _propertyParameters = [parameters copy];
@@ -385,7 +405,6 @@
     property.stars = _propertyStars;
     property.type = _propertyType;
     [_properties addObject:property];
-    
 }
 
 - (void)parsedExtraCode:(NSString*)code {
