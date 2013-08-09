@@ -32,7 +32,6 @@
 		79880685177D0A9D0003B729 /* Fail.m in Sources */ = {isa = PBXBuildFile; fileRef = 79880684177D0A9B0003B729 /* Fail.m */; };
 		8DD76F9A0486AA7600D96B5E /* pegged.m in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* pegged.m */; settings = {ATTRIBUTES = (); }; };
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
-		8DD76F9F0486AA7600D96B5E /* pegged.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6859EA3029092ED04C91782 /* pegged.1 */; };
 		BE3FF57910EDF8000020AEB9 /* Subrule.m in Sources */ = {isa = PBXBuildFile; fileRef = BE3FF57810EDF8000020AEB9 /* Subrule.m */; };
 		BE3FF59010EE06890020AEB9 /* Terminal.m in Sources */ = {isa = PBXBuildFile; fileRef = BE3FF58F10EE06890020AEB9 /* Terminal.m */; };
 		BE3FF60210EE11040020AEB9 /* Code.m in Sources */ = {isa = PBXBuildFile; fileRef = BE3FF60110EE11040020AEB9 /* Code.m */; };
@@ -136,19 +135,6 @@
 			remoteInfo = Calculator;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		8DD76F9E0486AA7600D96B5E /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 8;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-				8DD76F9F0486AA7600D96B5E /* pegged.1 in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		08FB7796FE84155DC02AAC07 /* pegged.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = pegged.m; sourceTree = "<group>"; };
@@ -427,7 +413,6 @@
 			buildPhases = (
 				8DD76F990486AA7600D96B5E /* Sources */,
 				8DD76F9B0486AA7600D96B5E /* Frameworks */,
-				8DD76F9E0486AA7600D96B5E /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -713,6 +698,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
 			};
 			name = Debug;
 		};
@@ -723,6 +709,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
 			};
 			name = Release;
 		};
