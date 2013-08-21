@@ -391,7 +391,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
     return [_string substringWithRange:NSMakeRange(begin, len)];
 }
 
-- (BOOL)parseString:(NSString *)string usingContext:(NSDictionary *)context result:(id *)result
+- (BOOL)parseString:(NSString *)string result:(id *)result
 {
 	// Prepare parser input
 	_string = string;
@@ -410,7 +410,6 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 
 	_captureStart= _captureEnd= _index;
     _capturing = YES;
-	_context = context;
     
 	// Do string matching
     BOOL matched = [self matchRule: @"$StartRule" startIndex:_index asserted:YES];
@@ -447,8 +446,8 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 			// Push result
 			if (result) {
 				// Set parsing range for diagnostics
-				if ([result respondsToSelector: @selector(setSourceString:range:context:)])
-					[result setSourceString:_string range:capture.parsedRange context:context];
+				if ([result respondsToSelector: @selector(setSourceString:range:)])
+					[result setSourceString:_string range:capture.parsedRange];
 				
 				[self pushResult: result];
 			}

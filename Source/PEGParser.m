@@ -84,9 +84,6 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text, NSString **errorC
 
 	// The capture of the currently performed action
 	PEGParserCapture *_currentCapture;
-	
-	// The context used to parameterize parsing.
-	NSDictionary *_context;
 }
 
 // Public parser state information
@@ -2132,7 +2129,7 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger startIndex, NSInt
     return [_string substringWithRange:NSMakeRange(begin, len)];
 }
 
-- (BOOL)parseString:(NSString *)string usingContext:(NSDictionary *)context result:(id *)result
+- (BOOL)parseString:(NSString *)string result:(id *)result
 {
 	// Prepare parser input
 	_string = string;
@@ -2151,7 +2148,6 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger startIndex, NSInt
 
 	_captureStart= _captureEnd= _index;
     _capturing = YES;
-	_context = context;
     
 	// Do string matching
     BOOL matched = [self matchRule: @"Grammar" startIndex:_index asserted:YES];
@@ -2188,8 +2184,8 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger startIndex, NSInt
 			// Push result
 			if (result) {
 				// Set parsing range for diagnostics
-				if ([result respondsToSelector: @selector(setSourceString:range:context:)])
-					[result setSourceString:_string range:capture.parsedRange context:context];
+				if ([result respondsToSelector: @selector(setSourceString:range:)])
+					[result setSourceString:_string range:capture.parsedRange];
 				
 				[self pushResult: result];
 			}
@@ -2204,7 +2200,6 @@ static PEGParserRule __Suffix = ^(PEGParser *parser, NSInteger startIndex, NSInt
     _string = nil;
     _cstring = nil;
 	_actionResults = nil;
-	_context = nil;
 	
 	return matched;
 }
