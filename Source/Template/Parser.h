@@ -50,7 +50,7 @@ extern NSString *ParserClassErrorTypeKey;
 
 /*!
  @abstract Parses the given string and passes the return value of the start rule as output argument.
- @discussion Returns YES on match. The given context will be passed to all action results implementing the ParserClassDiagnostics protocol. This way contextual information (like source URLs) may be stored in statements. It will be also available to all actions through the "parser.context" property.
+ @discussion Returns YES on match.
  */
 - (BOOL)parseString:(NSString *)string result:(id *)result;
 
@@ -80,11 +80,6 @@ extern NSString *ParserClassErrorTypeKey;
  @abstract The currently parsed string
  */
 @property (readonly) NSString* string;
-
-/*!
- @abstract The context provided for parsing.
- */
-@property (readonly) NSDictionary* context;
 
 
 #pragma mark - Action helpers

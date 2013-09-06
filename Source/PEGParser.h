@@ -81,11 +81,6 @@ extern NSString *PEGParserErrorTypeKey;
  */
 @property (readonly) NSString* string;
 
-/*!
- @abstract The context provided for parsing.
- */
-@property (readonly) NSDictionary* context;
-
 
 #pragma mark - Action helpers
 
