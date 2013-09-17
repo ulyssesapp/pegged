@@ -69,7 +69,6 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 	NSMutableDictionary *_rules;
 	
 	// The current string position
-	const char *_cstring;
 	NSUInteger _index;
 	NSUInteger _limit;
 		
@@ -250,9 +249,9 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 - (BOOL)matchString:(char *)literal startIndex:(NSInteger)startIndex asserted:(BOOL)asserted
 {
 	NSInteger saved = _index;
-
+	
 	while (*literal) {
-		if ((_index >= _limit) || (_cstring[_index] != *literal)) {
+		if ((_index >= _limit) || ([_string characterAtIndex: _index] != *literal)) {
 			_index = saved;
 			
 			if (asserted)
@@ -395,14 +394,12 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 {
 	// Prepare parser input
 	_string = string;
-	#ifndef __PEG_PARSER_CASE_INSENSITIVE__
-		_cstring = [_string UTF8String];
-	#else
-		_cstring = [[_string lowercaseString] UTF8String];
+	#ifdef __PEG_PARSER_CASE_INSENSITIVE__
+		_string = [_string lowercaseString];
 	#endif
 		
     // Setup capturing limits
-	_limit  = [_string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	_limit  = _string.length;
     _index  = 0;
 	
 	_captures = [NSMutableArray new];
@@ -460,7 +457,6 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 	
     // Cleanup parser
     _string = nil;
-    _cstring = nil;
 	_actionResults = nil;
 	_context = nil;
 	
