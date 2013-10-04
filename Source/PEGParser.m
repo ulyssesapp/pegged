@@ -278,7 +278,8 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text, NSString **errorC
 - (BOOL)matchRule:(NSString *)ruleName startIndex:(NSInteger)startIndex asserted:(BOOL)asserted
 {
     NSArray *rules = [_rules objectForKey: ruleName];
-
+	NSInteger lastIndex = _index;
+	
 	// We are in an error state. Just stop.
 	if (_lastError)
 		return NO;
@@ -294,7 +295,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text, NSString **errorC
 	}
 
 	if (asserted)
-		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName] location:startIndex length:(_index - startIndex)];
+		[self setErrorWithMessage: [NSString stringWithFormat: @"Unmatched%@", ruleName] location:lastIndex length:(_index - lastIndex)];
 	
     return NO;
 }
@@ -315,7 +316,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text, NSString **errorC
 		++literal;
 		++_index;
 	}
-	
+
     return YES;
 }
 
@@ -335,6 +336,16 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text, NSString **errorC
 
 - (void)setErrorWithMessage:(NSString *)message location:(NSInteger)location length:(NSInteger)length
 {
+	if (length == 0) {
+		if ((location + length) < _string.length) {
+			length = 1;
+		}
+		else if (location > 0) {
+			location --;
+			length = 1;
+		}
+	}
+		
 	if (!_lastError)
 		_lastError = [NSError errorWithDomain:NSCocoaErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: PEGParserLocalizedString(message), PEGParserErrorTypeKey: message, PEGParserErrorStringLocationKey: @(location), PEGParserErrorStringLengthKey: @(length), PEGParserErrorStringKey: [_string copy]}];
 }
