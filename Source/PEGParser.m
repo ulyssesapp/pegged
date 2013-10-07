@@ -337,7 +337,7 @@ typedef id (^PEGParserAction)(PEGParser *self, NSString *text, NSString **errorC
 - (void)setErrorWithMessage:(NSString *)message location:(NSInteger)location length:(NSInteger)length
 {
 	if (length == 0) {
-		if ((location + length) < _string.length) {
+		if (location < _string.length) {
 			length = 1;
 		}
 		else if (location > 0) {
