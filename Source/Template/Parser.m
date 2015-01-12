@@ -495,7 +495,7 @@ typedef id (^ParserClassAction)(ParserClass *self, NSString *text, NSString **er
 
 - (NSString *)positionDescriptionForIndex:(NSInteger)index
 {
-	return [NSString stringWithFormat: @"line: %li, column: %li", [self lineNumberForIndex: index], [self columnNumberForIndex: index]];
+	return [NSString stringWithFormat: @"line: %li, column: %li", (long)[self lineNumberForIndex: index], (long)[self columnNumberForIndex: index]];
 }
 
 @end
