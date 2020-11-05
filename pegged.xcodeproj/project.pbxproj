@@ -657,6 +657,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Source/pegged_Prefix.pch;
 				INSTALL_PATH = /usr/local/bin;
+				LD_NO_PIE = YES;
 				OTHER_LDFLAGS = (
 					"-sectcreate",
 					__DATA,
@@ -684,6 +685,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = Source/pegged_Prefix.pch;
 				INSTALL_PATH = /usr/local/bin;
+				LD_NO_PIE = YES;
 				OTHER_LDFLAGS = (
 					"-sectcreate",
 					__DATA,
