@@ -26,6 +26,7 @@
 #import "Version.h"
 
 #include <mach-o/getsect.h>
+#include <mach-o/ldsyms.h>
 
 @implementation Compiler
 
@@ -61,7 +62,7 @@
 - (NSMutableString *)getTemplateWithName:(const char *)name
 {
 	size_t length;
-	const void *data = getsectdata ("__DATA", name, &length);
+	const void *data = getsectiondata (&_mh_execute_header, "__DATA", name, &length);
 	
 	NSMutableString *template = [[NSMutableString alloc] initWithBytes:data length:length encoding:NSUTF8StringEncoding];
 	return template;
